@@ -4305,6 +4305,7 @@ void TelegramQml::uploadCancelFile_slt(qint64 fileId, bool cancelled)
 
 void TelegramQml::fatalError_slt()
 {
+    Q_EMIT fatalError();
     try_init();
 }
 

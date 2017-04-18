@@ -471,6 +471,8 @@ Q_SIGNALS:
 
     void errorSignal(qint64 id, qint32 errorCode, QString errorText, QString functionName);
 
+    void fatalError();
+
 protected:
     void try_init();
 
