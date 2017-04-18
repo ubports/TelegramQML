@@ -5373,7 +5373,12 @@ void TelegramQml::refreshSecretChats()
     const QList<SecretChat*> &secrets = p->tsettings->secretChats();
     Q_FOREACH(SecretChat *sc, secrets)
     {
+
         EncryptedChat chat(EncryptedChat::typeEncryptedChat);
+
+        if (sc->date() == 0)
+            chat.setClassType(EncryptedChat::typeEncryptedChatWaiting);
+
         chat.setAccessHash(sc->accessHash());
         chat.setAdminId(sc->adminId());
         chat.setDate(sc->date());
