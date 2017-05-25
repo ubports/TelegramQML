@@ -346,7 +346,6 @@ void TelegramEngine::logout()
         p->phoneNumber = phoneNumber;
         setState(AuthUnknown);
         Q_EMIT authLoggedOut();
-        p->phoneNumber.clear();
 
         setPhoneNumber("");
     });
