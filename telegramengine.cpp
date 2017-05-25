@@ -66,7 +66,9 @@ bool telegramqml_settings_read_fnc(Telegram *tg, QVariantMap &map)
     if(!qmlEng)
         return false;
 
-    QByteArray data = method.call().toVariant().value<QByteArray>();
+    QString dataString = method.call().toVariant().value<QString>();
+
+    QByteArray data = QByteArray::fromHex(dataString.toUtf8());
     QDataStream stream(&data, QIODevice::ReadOnly);
     stream >> map;
     return !map.isEmpty();
@@ -94,7 +96,9 @@ bool telegramqml_settings_write_fnc(Telegram *tg, const QVariantMap &map)
     QDataStream stream(&data, QIODevice::WriteOnly);
     stream << map;
 
-    const bool res = method.call( QList<QJSValue>()<< qmlEng->toScriptValue<QByteArray>(data) ).toBool();
+    QString dataString = QString(data.toHex());
+
+    const bool res = method.call( QList<QJSValue>()<< qmlEng->toScriptValue<QString>(dataString) ).toBool();
     return res;
 }
 
