@@ -48,6 +48,7 @@
 #include <QTimer>
 #include <QAudioDecoder>
 #include <QMediaMetaData>
+#include <QCryptographicHash>
 
 #ifdef Q_OS_WIN
 #define FILES_PRE_STR QString("file:///")
@@ -91,7 +92,9 @@ public:
     QString tempPath;
     QString configPath;
     QUrl publicKeyFile;
-    AccountPassword accountPassword;
+    //for the password/2FA authentication. Storing AccountPassword here did not work, the bytes got corrupted
+    //AccountPassword accountPassword;
+    QString currentSalt;
 
     bool globalMute;
     bool online;
@@ -1724,8 +1727,9 @@ void TelegramQml::authCheckPassword(const QString &pass)
     if( !p->telegram )
         return;
 
-    QByteArray salt = p->accountPassword.currentSalt();
-    p->telegram->authCheckPassword(salt+pass.toUtf8()+salt);
+    QByteArray salt = QByteArray::fromHex(p->currentSalt.toUtf8());
+    QByteArray passData = salt + pass.toUtf8() + salt;
+    p->telegram->authCheckPassword(QCryptographicHash::hash(passData, QCryptographicHash::Sha256));
 }
 
 void TelegramQml::accountUpdateProfile(const QString &firstName, const QString &lastName)
@@ -3106,7 +3110,9 @@ void TelegramQml::reconnect()
 void TelegramQml::accountGetPassword_slt(qint64 id, const AccountPassword &password)
 {
     Q_UNUSED(id)
-    p->accountPassword = password;
+    //As a workaround for the binary corruption of the AccountPassword we store it here as a string, thereby guaranteeing deep copy
+    //p->accountPassword = password;
+    p->currentSalt = QString(password.currentSalt().toHex());
     if(password.classType() == AccountPassword::typeAccountPassword)
     {
         Q_EMIT authPasswordNeeded();
@@ -3154,7 +3160,7 @@ void TelegramQml::authSignInError_slt(qint64 id, qint32 errorCode, QString error
         Q_EMIT authNeededChanged();
         if(errorCode == 401 || errorText == "SESSION_PASSWORD_NEEDED")
         {
-            Q_EMIT authPasswordNeeded();
+            p->telegram->accountGetPassword();
         }
         else
         {
