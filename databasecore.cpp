@@ -349,14 +349,14 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
     {
         const QSqlRecord &record = query.record();
 
-        MessageAction action( static_cast<MessageAction::MessageActionType>(record.value("actionType").toLongLong()) );
+        MessageAction action( static_cast<MessageAction::MessageActionClassType>(record.value("actionType").toLongLong()) );
         action.setAddress( record.value("actionAddress").toString() );
         action.setUserId( record.value("actionUserId").toLongLong() );
         action.setTitle( record.value("actionTitle").toString() );
         action.setUsers( stringToUsers(record.value("actionUsers").toString()) );
         action.setPhoto( readPhoto(record.value("actionPhoto").toLongLong()) );
 
-        MessageMedia media( static_cast<MessageMedia::MessageMediaType>(record.value("mediaType").toLongLong()) );
+        MessageMedia media( static_cast<MessageMedia::MessageMediaClassType>(record.value("mediaType").toLongLong()) );
         media.setFirstName( record.value("mediaFirstName").toString() );
         media.setLastName( record.value("mediaLastName").toString() );
         media.setPhoneNumber( record.value("mediaPhoneNumber").toString() );
@@ -367,7 +367,7 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         media.setPhoto( readPhoto(record.value("mediaPhoto").toLongLong()) );
         media.setGeo( readGeo(record.value("mediaGeo").toLongLong()) );
 
-        Peer toPeer( static_cast<Peer::PeerType>(record.value("toPeerType").toLongLong()) );
+        Peer toPeer( static_cast<Peer::PeerClassType>(record.value("toPeerType").toLongLong()) );
         if(toPeer.classType() == Peer::typePeerChat)
             toPeer.setChatId(record.value("toId").toLongLong());
         else
@@ -498,7 +498,7 @@ void DatabaseCore::readDialogs()
     {
         const QSqlRecord &record = query.record();
 
-        Peer peer( static_cast<Peer::PeerType>(record.value("peerType").toLongLong()) );
+        Peer peer( static_cast<Peer::PeerClassType>(record.value("peerType").toLongLong()) );
         if(peer.classType() == Peer::typePeerChat)
             peer.setChatId(record.value("peer").toLongLong());
         else
@@ -544,7 +544,7 @@ void DatabaseCore::readUsers()
     {
         const QSqlRecord &record = query.record();
 
-        UserStatus status( static_cast<UserStatus::UserStatusType>(record.value("statusType").toLongLong()) );
+        UserStatus status( static_cast<UserStatus::UserStatusClassType>(record.value("statusType").toLongLong()) );
         status.setWasOnline( record.value("statusWasOnline").toLongLong() );
         status.setExpires( record.value("statusExpires").toLongLong() );
 
@@ -577,7 +577,7 @@ void DatabaseCore::readUsers()
         user.setFirstName( record.value("firstName").toString() );
         user.setLastName( record.value("lastName").toString() );
         user.setUsername( record.value("username").toString() );
-        user.setClassType( static_cast<User::UserType>(record.value("type").toLongLong()) );
+        user.setClassType( static_cast<User::UserClassType>(record.value("type").toLongLong()) );
         user.setPhoto(photo);
         user.setStatus(status);
 
@@ -636,7 +636,7 @@ void DatabaseCore::readChats()
         chat.setParticipantsCount( record.value("participantsCount").toLongLong() );
         chat.setCheckedIn( record.value("checkedIn").toBool() );
         chat.setLeft( record.value("left").toBool() );
-        chat.setClassType( static_cast<Chat::ChatType>(record.value("type").toLongLong()) );
+        chat.setClassType( static_cast<Chat::ChatClassType>(record.value("type").toLongLong()) );
         chat.setPhoto(photo);
 
         DbChat dchat;
@@ -1123,7 +1123,7 @@ Audio DatabaseCore::readAudio(qint64 id)
     audio.setSize( record.value("size").toLongLong() );
     audio.setAccessHash( record.value("accessHash").toLongLong() );
     audio.setUserId( record.value("userId").toLongLong() );
-    audio.setClassType( static_cast<Audio::AudioType>(record.value("type").toLongLong()) );
+    audio.setClassType( static_cast<Audio::AudioClassType>(record.value("type").toLongLong()) );
 
     return audio;
 }
@@ -1161,7 +1161,7 @@ Video DatabaseCore::readVideo(qint64 id)
     video.setH( record.value("h").toLongLong() );
     video.setAccessHash( record.value("accessHash").toLongLong() );
     video.setUserId( record.value("userId").toLongLong() );
-    video.setClassType( static_cast<Video::VideoType>(record.value("type").toLongLong()) );
+    video.setClassType( static_cast<Video::VideoClassType>(record.value("type").toLongLong()) );
 
     const QList<PhotoSize> &sizes = readPhotoSize(video.id());
     if(!sizes.isEmpty())
@@ -1202,7 +1202,7 @@ Document DatabaseCore::readDocument(qint64 id)
     document.setAttributes( QList<DocumentAttribute>()<<attr );
     document.setSize( record.value("size").toLongLong() );
     document.setAccessHash( record.value("accessHash").toLongLong() );
-    document.setClassType( static_cast<Document::DocumentType>(record.value("type").toLongLong()) );
+    document.setClassType( static_cast<Document::DocumentClassType>(record.value("type").toLongLong()) );
 
     if(document.mimeType().contains("webp"))
         document.setAttributes( document.attributes() << DocumentAttribute(DocumentAttribute::typeDocumentAttributeSticker) );

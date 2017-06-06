@@ -10,7 +10,6 @@
 #include <QtQml>
 #include <QFile>
 #include <telegram/types/types.h>
-#include <secret/decryptedmessage.h>
 #include "../photosizelist.h"
 #include "../documentattributelist.h"
 #include "../chatparticipantlist.h"
@@ -2677,7 +2676,6 @@ public:
         _id = another.id();
         _date = another.date();
         _sizes = new PhotoSizeList(another.sizes(), this);
-        _geo = new GeoPointObject(another.geo(), this);
         _accessHash = another.accessHash();
         _userId = another.userId();
         _classType = another.classType();
@@ -2685,8 +2683,7 @@ public:
     }
     PhotoObject(QObject *parent = 0) :
         TqObject(parent),
-        _sizes(0),
-        _geo(0){}
+        _sizes(0){}
     ~PhotoObject(){}
 
     qint64 id() const {
@@ -2781,8 +2778,6 @@ public:
         Q_EMIT dateChanged();
         *_sizes = another.sizes();
         Q_EMIT sizesChanged();
-        *_geo = another.geo();
-        Q_EMIT geoChanged();
         _accessHash = another.accessHash();
         Q_EMIT accessHashChanged();
         _userId = another.userId();
@@ -3258,7 +3253,6 @@ class TELEGRAMQMLSHARED_EXPORT MessageActionObject : public TqObject
 
 public:
     MessageActionObject(const MessageAction & another, QObject *parent = 0) : TqObject(parent){
-        _address = another.address();
         _userId = another.userId();
         _inviterId = another.inviterId();
         _photo = new PhotoObject(another.photo(), this);
@@ -3359,8 +3353,6 @@ public:
 
 
     void operator= ( const MessageAction & another) {
-        _address = another.address();
-        Q_EMIT addressChanged();
         _userId = another.userId();
         Q_EMIT userIdChanged();
         *_photo = another.photo();
@@ -3707,14 +3699,10 @@ class TELEGRAMQMLSHARED_EXPORT ChatObject : public TqObject
     Q_PROPERTY(qint32 participantsCount READ participantsCount WRITE setParticipantsCount NOTIFY participantsCountChanged)
     Q_PROPERTY(qint32 id READ id WRITE setId NOTIFY idChanged)
     Q_PROPERTY(qint32 version READ version WRITE setVersion NOTIFY versionChanged)
-    Q_PROPERTY(QString venue READ venue WRITE setVenue NOTIFY venueChanged)
     Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged)
-    Q_PROPERTY(QString address READ address WRITE setAddress NOTIFY addressChanged)
     Q_PROPERTY(qint32 date READ date WRITE setDate NOTIFY dateChanged)
     Q_PROPERTY(ChatPhotoObject* photo READ photo WRITE setPhoto NOTIFY photoChanged)
-    Q_PROPERTY(GeoPointObject* geo READ geo WRITE setGeo NOTIFY geoChanged)
     Q_PROPERTY(qint64 accessHash READ accessHash WRITE setAccessHash NOTIFY accessHashChanged)
-    Q_PROPERTY(bool checkedIn READ checkedIn WRITE setCheckedIn NOTIFY checkedInChanged)
     Q_PROPERTY(bool left READ left WRITE setLeft NOTIFY leftChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
@@ -3724,22 +3712,17 @@ public:
         _participantsCount = another.participantsCount();
         _id = another.id();
         _version = another.version();
-        _venue = another.venue();
         _title = another.title();
-        _address = another.address();
         _date = another.date();
         _photo = new ChatPhotoObject(another.photo(), this);
-        _geo = new GeoPointObject(another.geo(), this);
         _accessHash = another.accessHash();
-        _checkedIn = another.checkedIn();
         _left = another.left();
         _classType = another.classType();
 
     }
     ChatObject(QObject *parent = 0) :
         TqObject(parent),
-        _photo(0),
-        _geo(0){}
+        _photo(0){}
     ~ChatObject(){}
 
     qint32 participantsCount() const {
@@ -3778,18 +3761,6 @@ public:
         Q_EMIT changed();
     }
 
-    QString venue() const {
-        return _venue;
-    }
-
-    void setVenue(QString value) {
-        if( value == _venue )
-            return;
-        _venue = value;
-        Q_EMIT venueChanged();
-        Q_EMIT changed();
-    }
-
     QString title() const {
         return _title;
     }
@@ -3799,18 +3770,6 @@ public:
             return;
         _title = value;
         Q_EMIT titleChanged();
-        Q_EMIT changed();
-    }
-
-    QString address() const {
-        return _address;
-    }
-
-    void setAddress(QString value) {
-        if( value == _address )
-            return;
-        _address = value;
-        Q_EMIT addressChanged();
         Q_EMIT changed();
     }
 
@@ -3838,18 +3797,6 @@ public:
         Q_EMIT changed();
     }
 
-    GeoPointObject* geo() const {
-        return _geo;
-    }
-
-    void setGeo(GeoPointObject* value) {
-        if( value == _geo )
-            return;
-        _geo = value;
-        Q_EMIT geoChanged();
-        Q_EMIT changed();
-    }
-
     qint64 accessHash() const {
         return _accessHash;
     }
@@ -3859,18 +3806,6 @@ public:
             return;
         _accessHash = value;
         Q_EMIT accessHashChanged();
-        Q_EMIT changed();
-    }
-
-    bool checkedIn() const {
-        return _checkedIn;
-    }
-
-    void setCheckedIn(bool value) {
-        if( value == _checkedIn )
-            return;
-        _checkedIn = value;
-        Q_EMIT checkedInChanged();
         Q_EMIT changed();
     }
 
@@ -3906,22 +3841,14 @@ public:
         Q_EMIT idChanged();
         _version = another.version();
         Q_EMIT versionChanged();
-        _venue = another.venue();
-        Q_EMIT venueChanged();
         _title = another.title();
         Q_EMIT titleChanged();
-        _address = another.address();
-        Q_EMIT addressChanged();
         _date = another.date();
         Q_EMIT dateChanged();
         *_photo = another.photo();
         Q_EMIT photoChanged();
-        *_geo = another.geo();
-        Q_EMIT geoChanged();
         _accessHash = another.accessHash();
         Q_EMIT accessHashChanged();
-        _checkedIn = another.checkedIn();
-        Q_EMIT checkedInChanged();
         _left = another.left();
         Q_EMIT leftChanged();
         _classType = another.classType();
@@ -3934,14 +3861,10 @@ Q_SIGNALS:
     void participantsCountChanged();
     void idChanged();
     void versionChanged();
-    void venueChanged();
     void titleChanged();
-    void addressChanged();
     void dateChanged();
     void photoChanged();
-    void geoChanged();
     void accessHashChanged();
-    void checkedInChanged();
     void leftChanged();
     void classTypeChanged();
 
@@ -3949,14 +3872,10 @@ private:
     qint32 _participantsCount;
     qint32 _id;
     qint32 _version;
-    QString _venue;
     QString _title;
-    QString _address;
     qint32 _date;
     ChatPhotoObject* _photo;
-    GeoPointObject* _geo;
     qint64 _accessHash;
-    bool _checkedIn;
     bool _left;
     quint32 _classType;
 
@@ -4339,15 +4258,13 @@ class TELEGRAMQMLSHARED_EXPORT DecryptedMessageMediaObject : public TqObject
 public:
     DecryptedMessageMediaObject(const DecryptedMessageMedia & another, QObject *parent = 0) : TqObject(parent){
         (void)another;
-        _thumb = another.thumb();
+        _thumb = another.thumbBytes();
         _thumbW = another.thumbW();
         _thumbH = another.thumbH();
         _duration = another.duration();
         _w = another.w();
         _h = another.h();
         _size = another.size();
-        _latitude = another.latitude();
-        _longitude = another.longitude();
         _key = another.key();
         _iv = another.iv();
         _phoneNumber = another.phoneNumber();
@@ -4580,7 +4497,7 @@ public:
 
 
     void operator= ( const DecryptedMessageMedia & another) {
-        _thumb = another.thumb();
+        _thumb = another.thumbBytes();
         Q_EMIT thumbChanged();
         _thumbW = another.thumbW();
         Q_EMIT thumbWChanged();
@@ -4594,10 +4511,6 @@ public:
         Q_EMIT hChanged();
         _size = another.size();
         Q_EMIT sizeChanged();
-        _latitude = another.latitude();
-        Q_EMIT latitudeChanged();
-        _longitude = another.longitude();
-        Q_EMIT longitudeChanged();
         _key = another.key();
         Q_EMIT keyChanged();
         _iv = another.iv();
@@ -5453,179 +5366,6 @@ private:
 };
 
 Q_DECLARE_METATYPE(MessageObject*)
-
-class TELEGRAMQMLSHARED_EXPORT GeoChatMessageObject : public TqObject
-{
-    Q_OBJECT
-    Q_PROPERTY(qint32 id READ id WRITE setId NOTIFY idChanged)
-    Q_PROPERTY(MessageActionObject* action READ action WRITE setAction NOTIFY actionChanged)
-    Q_PROPERTY(qint32 fromId READ fromId WRITE setFromId NOTIFY fromIdChanged)
-    Q_PROPERTY(qint32 date READ date WRITE setDate NOTIFY dateChanged)
-    Q_PROPERTY(MessageMediaObject* media READ media WRITE setMedia NOTIFY mediaChanged)
-    Q_PROPERTY(qint32 chatId READ chatId WRITE setChatId NOTIFY chatIdChanged)
-    Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
-    Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
-
-public:
-    GeoChatMessageObject(const GeoChatMessage & another, QObject *parent = 0) : TqObject(parent){
-        (void)another;
-        _id = another.id();
-        _action = new MessageActionObject(another.action(), this);
-        _fromId = another.fromId();
-        _date = another.date();
-        _media = new MessageMediaObject(another.media(), this);
-        _chatId = another.chatId();
-        _message = another.message();
-        _classType = another.classType();
-
-    }
-    GeoChatMessageObject(QObject *parent = 0) :
-        TqObject(parent),
-        _action(0),
-        _media(0){}
-    ~GeoChatMessageObject(){}
-
-    qint32 id() const {
-        return _id;
-    }
-
-    void setId(qint32 value) {
-        if( value == _id )
-            return;
-        _id = value;
-        Q_EMIT idChanged();
-        Q_EMIT changed();
-    }
-
-    MessageActionObject* action() const {
-        return _action;
-    }
-
-    void setAction(MessageActionObject* value) {
-        if( value == _action )
-            return;
-        _action = value;
-        Q_EMIT actionChanged();
-        Q_EMIT changed();
-    }
-
-    qint32 fromId() const {
-        return _fromId;
-    }
-
-    void setFromId(qint32 value) {
-        if( value == _fromId )
-            return;
-        _fromId = value;
-        Q_EMIT fromIdChanged();
-        Q_EMIT changed();
-    }
-
-    qint32 date() const {
-        return _date;
-    }
-
-    void setDate(qint32 value) {
-        if( value == _date )
-            return;
-        _date = value;
-        Q_EMIT dateChanged();
-        Q_EMIT changed();
-    }
-
-    MessageMediaObject* media() const {
-        return _media;
-    }
-
-    void setMedia(MessageMediaObject* value) {
-        if( value == _media )
-            return;
-        _media = value;
-        Q_EMIT mediaChanged();
-        Q_EMIT changed();
-    }
-
-    qint32 chatId() const {
-        return _chatId;
-    }
-
-    void setChatId(qint32 value) {
-        if( value == _chatId )
-            return;
-        _chatId = value;
-        Q_EMIT chatIdChanged();
-        Q_EMIT changed();
-    }
-
-    QString message() const {
-        return _message;
-    }
-
-    void setMessage(QString value) {
-        if( value == _message )
-            return;
-        _message = value;
-        Q_EMIT messageChanged();
-        Q_EMIT changed();
-    }
-
-    quint32 classType() const {
-        return _classType;
-    }
-
-    void setClassType(quint32 value) {
-        if( value == _classType )
-            return;
-        _classType = value;
-        Q_EMIT classTypeChanged();
-        Q_EMIT changed();
-    }
-
-
-    void operator= ( const GeoChatMessage & another) {
-        _id = another.id();
-        Q_EMIT idChanged();
-        *_action = another.action();
-        Q_EMIT actionChanged();
-        _fromId = another.fromId();
-        Q_EMIT fromIdChanged();
-        _date = another.date();
-        Q_EMIT dateChanged();
-        *_media = another.media();
-        Q_EMIT mediaChanged();
-        _chatId = another.chatId();
-        Q_EMIT chatIdChanged();
-        _message = another.message();
-        Q_EMIT messageChanged();
-        _classType = another.classType();
-        Q_EMIT classTypeChanged();
-
-    }
-
-Q_SIGNALS:
-    void changed();
-    void idChanged();
-    void actionChanged();
-    void fromIdChanged();
-    void dateChanged();
-    void mediaChanged();
-    void chatIdChanged();
-    void messageChanged();
-    void classTypeChanged();
-
-private:
-    qint32 _id;
-    MessageActionObject* _action;
-    qint32 _fromId;
-    qint32 _date;
-    MessageMediaObject* _media;
-    qint32 _chatId;
-    QString _message;
-    quint32 _classType;
-
-};
-
-Q_DECLARE_METATYPE(GeoChatMessageObject*)
 
 class TELEGRAMQMLSHARED_EXPORT UserObject : public TqObject
 {

@@ -620,8 +620,8 @@ private Q_SLOTS:
     void updateEncryptedTopMessage(const Message &message);
     void getMyUser();
 
-    InputPeer::InputPeerType getInputPeerType(qint64 pid);
-    Peer::PeerType getPeerType(qint64 pid);
+    InputPeer::InputPeerClassType getInputPeerType(qint64 pid);
+    Peer::PeerClassType getPeerType(qint64 pid);
 
     QStringList stringToIndex(const QString & str);
 

@@ -25,11 +25,9 @@
 #include "telegramthumbnailer.h"
 #include "objects/types.h"
 
-#include <secret/secretchat.h>
 #include <secret/decrypter.h>
 #include <util/utils.h>
 #include <telegram.h>
-#include <secret/decryptedmessage.h>
 #include <limits>
 
 #include <QPointer>
@@ -1564,7 +1562,7 @@ QList<qint64> TelegramQml::stickerSetDocuments(const QString &shortName) const
 InputUser TelegramQml::getInputUser(qint64 userId) const
 {
     UserObject *user = p->users.value(userId);
-    InputUser::InputUserType inputUserType;
+    InputUser::InputUserClassType inputUserType;
     InputUser inputUser;
     if (!user) return inputUser;
 
@@ -1970,7 +1968,7 @@ void TelegramQml::messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLi
     if(!userObj)
         return;
 
-    InputUser::InputUserType inputType = InputUser::typeInputUserEmpty;
+    InputUser::InputUserClassType inputType = InputUser::typeInputUserEmpty;
     switch(userObj->classType())
     {
     case User::typeUserContact:
@@ -1999,7 +1997,7 @@ qint64 TelegramQml::messagesDeleteChatUser(qint64 chatId, qint64 userId)
     if(!userObj)
         return 0;
 
-    InputUser::InputUserType inputType = InputUser::typeInputUserEmpty;
+    InputUser::InputUserClassType inputType = InputUser::typeInputUserEmpty;
     switch(userObj->classType())
     {
     case User::typeUserContact:
@@ -2420,7 +2418,7 @@ void TelegramQml::getFile(FileLocationObject *l, qint64 type, qint32 fileSize)
         return;
     }
 
-    InputFileLocation input(static_cast<InputFileLocation::InputFileLocationType>(type));
+    InputFileLocation input(static_cast<InputFileLocation::InputFileLocationClassType>(type));
     input.setAccessHash(l->accessHash());
     input.setId(l->id());
     input.setLocalId(l->localId());
@@ -3353,7 +3351,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, qint32 msgId, qint32 date, 
 
     qint64 old_msgId = msgObj->id();
 
-    Peer peer(static_cast<Peer::PeerType>(msgObj->toId()->classType()));
+    Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     peer.setChatId(msgObj->toId()->chatId());
     peer.setUserId(msgObj->toId()->userId());
 
@@ -3773,7 +3771,7 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
 
     qint64 old_msgId = msgObj->id();
 
-    Peer peer(static_cast<Peer::PeerType>(msgObj->toId()->classType()));
+    Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     peer.setChatId(msgObj->toId()->chatId());
     peer.setUserId(msgObj->toId()->userId());
 
@@ -3819,7 +3817,7 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
 
     qint64 old_msgId = msgObj->id();
 
-    Peer peer(static_cast<Peer::PeerType>(msgObj->toId()->classType()));
+    Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     peer.setChatId(msgObj->toId()->chatId());
     peer.setUserId(msgObj->toId()->userId());
 
@@ -3829,7 +3827,7 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     dialog.setUnreadCount(0);
 
     MessageMediaObject *mediaObj = msgObj->media();
-    MessageMedia media( static_cast<MessageMedia::MessageMediaType>(mediaObj->classType()) );
+    MessageMedia media( static_cast<MessageMedia::MessageMediaClassType>(mediaObj->classType()) );
     switch(mediaObj->classType())
     {
     case MessageMedia::typeMessageMediaPhoto:
@@ -4600,7 +4598,7 @@ void TelegramQml::insertUpdate(const Update &update)
 
         qint64 old_msgId = msgObj->id();
 
-        Peer peer(static_cast<Peer::PeerType>(msgObj->toId()->classType()));
+        Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
         peer.setChatId(msgObj->toId()->chatId());
         peer.setUserId(msgObj->toId()->userId());
 
@@ -4891,11 +4889,11 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
     MessageAction action;
     const DecryptedMessageMedia &dmedia = m.media();
     const DecryptedMessageAction &daction = m.action();
-    if(m.message().isEmpty() && dmedia.classType()==DecryptedMessageMedia::typeDecryptedMessageMediaEmpty)
+    if(m.message().isEmpty() && dmedia.classType()==DecryptedMessageMedia::typeDecryptedMessageMediaEmptySecret8)
     {
         switch(static_cast<int>(daction.classType()))
         {
-        case DecryptedMessageAction::typeDecryptedMessageActionNotifyLayer:
+        case DecryptedMessageAction::typeDecryptedMessageActionNotifyLayerSecret17:
             action.setClassType(MessageAction::typeMessageActionChatCreate);
             action.setUserId(chat->adminId());
             action.setUsers(QList<qint32>()<<chat->adminId());
@@ -4918,12 +4916,12 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
     bool out = (msg.fromId()==me());
     msg.setFlags(UNREAD_OUT_TO_FLAG(false,out));
 
-    bool hasMedia = (dmedia.classType() != DecryptedMessageMedia::typeDecryptedMessageMediaEmpty);
+    bool hasMedia = (dmedia.classType() != DecryptedMessageMedia::typeDecryptedMessageMediaEmptySecret8);
     bool hasInternalMedia = false;
     if(hasMedia)
     {
         MessageMedia media;
-        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaExternalDocument)
+        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaExternalDocumentSecret23)
         {
             Document doc(Document::typeDocument);
             doc.setAccessHash(dmedia.accessHash());
@@ -4931,7 +4929,7 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             doc.setDcId(dmedia.dcId());
             doc.setId(dmedia.id());
             doc.setMimeType(dmedia.mimeType());
-            doc.setThumb( insertCachedPhotoSize(dmedia.thumb23()) );
+            doc.setThumb( insertCachedPhotoSize(dmedia.thumbPhotoSize()) );
             doc.setDate(dmedia.date());
             doc.setAttributes(dmedia.attributes());
 
@@ -4939,7 +4937,7 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             media.setClassType(MessageMedia::typeMessageMediaDocument);
         }
         else
-        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaPhoto)
+        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaPhotoSecret8)
         {
             QList<PhotoSize> photoSizes;
 
@@ -4950,16 +4948,16 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             photoSizes << psize;
 
             PhotoSize thumbSize(PhotoSize::typePhotoSize);
-            if(dmedia.thumb23().classType() != PhotoSize::typePhotoSizeEmpty)
+            if(dmedia.thumbPhotoSize().classType() != PhotoSize::typePhotoSizeEmpty)
             {
-                thumbSize = dmedia.thumb23();
+                thumbSize = dmedia.thumbPhotoSize();
                 thumbSize.setW(dmedia.w());
                 thumbSize.setH(dmedia.h());
             }
             else
             {
                 thumbSize.setClassType(PhotoSize::typePhotoCachedSize);
-                thumbSize.setBytes(dmedia.thumb());
+                thumbSize.setBytes(dmedia.thumbBytes());
                 thumbSize.setW(dmedia.w()/2);
                 thumbSize.setH(dmedia.h()/2);
 
@@ -4982,8 +4980,8 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             hasInternalMedia = true;
         }
         else
-        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideo ||
-           dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideo_layer8)
+        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideoSecret17 ||
+           dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideoSecret8)
         {
             Video video(Video::typeVideo);
             video.setId(attachment.id());
@@ -4996,10 +4994,9 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             video.setW(dmedia.w());
             video.setDuration(dmedia.duration());
 
-            if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideo_layer8)
+            if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideoSecret8)
             {
                 PhotoSize thumbSize(PhotoSize::typePhotoCachedSize);
-                thumbSize.setBytes(dmedia.thumb());
                 thumbSize.setW(dmedia.w());
                 thumbSize.setH(dmedia.h());
                 video.setThumb( insertCachedPhotoSize(thumbSize) );
@@ -5011,8 +5008,8 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             hasInternalMedia = true;
         }
         else
-        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaAudio ||
-           dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaAudio_layer8)
+        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaAudioSecret17 ||
+           dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaAudioSecret8)
         {
             Audio audio(Audio::typeAudio);
             audio.setId(attachment.id());
@@ -5029,8 +5026,8 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             hasInternalMedia = true;
         }
         else
-        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideo ||
-           dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideo_layer8)
+        if(dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideoSecret17 ||
+           dmedia.classType() == DecryptedMessageMedia::typeDecryptedMessageMediaVideoSecret8)
         {
             Document doc(Document::typeDocument);
             doc.setAccessHash(attachment.accessHash());
@@ -5068,7 +5065,7 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
     dlg.setPeer(dlgPeer);
     dlg.setTopMessage(msg.id());
 
-    if(!FLAG_TO_OUT(msg.flags()) && sc.decryptedMessage().action().classType() != DecryptedMessageAction::typeDecryptedMessageActionNotifyLayer)
+    if(!FLAG_TO_OUT(msg.flags()) && sc.decryptedMessage().action().classType() != DecryptedMessageAction::typeDecryptedMessageActionNotifyLayerSecret17)
     {
         DialogObject *dobj = p->dialogs.value(chatId);
         dlg.setUnreadCount( dobj? dobj->unreadCount()+1 : 1 );
@@ -5438,9 +5435,9 @@ qint64 TelegramQml::generateRandomId() const
     return randomId;
 }
 
-InputPeer::InputPeerType TelegramQml::getInputPeerType(qint64 pid)
+InputPeer::InputPeerClassType TelegramQml::getInputPeerType(qint64 pid)
 {
-    InputPeer::InputPeerType res = InputPeer::typeInputPeerEmpty;
+    InputPeer::InputPeerClassType res = InputPeer::typeInputPeerEmpty;
 
     if(p->users.contains(pid))
     {
@@ -5470,9 +5467,9 @@ InputPeer::InputPeerType TelegramQml::getInputPeerType(qint64 pid)
     return res;
 }
 
-Peer::PeerType TelegramQml::getPeerType(qint64 pid)
+Peer::PeerClassType TelegramQml::getPeerType(qint64 pid)
 {
-    Peer::PeerType res;
+    Peer::PeerClassType res;
 
     if(p->users.contains(pid))
         res = Peer::typePeerUser;

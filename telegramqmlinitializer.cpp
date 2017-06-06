@@ -169,9 +169,6 @@ void TelegramQmlInitializer::initializeTypes(const char *uri) {
     qmlRegisterType<MessageObject>(uri, 1, 0, "Message");
     qRegisterMetaType<MessageObject*>("MessageObject*");
 
-    qmlRegisterType<GeoChatMessageObject>(uri, 1, 0, "GeoChatMessage");
-    qRegisterMetaType<GeoChatMessageObject*>("GeoChatMessageObject*");
-
     qmlRegisterType<UserObject>(uri, 1, 0, "User");
     qRegisterMetaType<UserObject*>("UserObject*");
 
