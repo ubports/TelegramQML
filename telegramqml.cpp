@@ -2806,10 +2806,10 @@ void TelegramQml::try_init()
     connect( p->telegram, SIGNAL(authNeeded())                          , SLOT(authNeeded_slt())                           );
     connect( p->telegram, SIGNAL(authLoggedIn())                        , SLOT(authLoggedIn_slt())                         );
     connect( p->telegram, SIGNAL(authLogOutAnswer(qint64,bool))         , SLOT(authLogOut_slt(qint64,bool))                );
-    connect( p->telegram, SIGNAL(authCheckPhoneAnswer(qint64,bool))     , SLOT(authCheckPhone_slt(qint64,bool))            );
-    connect( p->telegram, SIGNAL(authCheckedPhoneError(qint64))         , SLOT(authCheckedPhoneError_slt(qint64))          );
+    connect( p->telegram, SIGNAL(authCheckPhoneAnswer(qint64,const AuthCheckedPhone&))     , SLOT(authCheckPhone_slt(qint64,const AuthCheckedPhone&)));
+    connect( p->telegram, SIGNAL(authCheckPhoneError(qint64,qint32, const QString&))         , SLOT(authCheckPhoneError_slt(qint64,qint32, const QString&)));
     connect( p->telegram, SIGNAL(authSendCallAnswer(qint64,bool))       , SLOT(authSendCall_slt(qint64,bool))              );
-    connect( p->telegram, SIGNAL(authSendCodeAnswer(qint64,bool,qint32)), SLOT(authSendCode_slt(qint64,bool,qint32))       );
+    connect( p->telegram, SIGNAL(authSendCodeAnswer(qint64, const AuthSentCode&)), SLOT(authSendCode_slt(qint64, const AuthSentCode&)));
     connect( p->telegram, SIGNAL(authSendCodeError(qint64))             , SLOT(authSendCodeError_slt(qint64))              );
     connect( p->telegram, SIGNAL(authSendInvitesAnswer(qint64,bool))    , SLOT(authSendInvites_slt(qint64,bool))           );
     connect( p->telegram, SIGNAL(authSignInError(qint64,qint32,QString)), SLOT(authSignInError_slt(qint64,qint32,QString)) );
@@ -2890,8 +2890,6 @@ void TelegramQml::try_init()
              SLOT(messagesForwardPhoto_slt(qint64,UpdatesType)) );
     connect( p->telegram, SIGNAL(messagesForwardDocumentAnswer(qint64,UpdatesType)),
              SLOT(messagesForwardDocument_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesForwardMediaAnswer(qint64,UpdatesType)),
-             SLOT(messagesForwardMedia_slt(qint64,UpdatesType)) );
 
     connect( p->telegram, SIGNAL(messagesGetFullChatAnswer(qint64,ChatFull,QList<Chat>,QList<User>)),
              SLOT(messagesGetFullChat_slt(qint64,ChatFull,QList<Chat>,QList<User>)) );
@@ -2951,8 +2949,8 @@ void TelegramQml::try_init()
              SLOT(updateSecretChatMessage_slt(SecretChatMessage,qint32)) );
     connect( p->telegram, SIGNAL(updatesGetDifferenceAnswer(qint64,QList<Message>,QList<SecretChatMessage>,QList<Update>,QList<Chat>,QList<User>,UpdatesState,bool)),
              SLOT(updatesGetDifference_slt(qint64,QList<Message>,QList<SecretChatMessage>,QList<Update>,QList<Chat>,QList<User>,UpdatesState,bool)) );
-    connect( p->telegram, SIGNAL(updatesGetStateAnswer(qint64,qint32,qint32,qint32,qint32,qint32)),
-             SLOT(updatesGetState_slt(qint64,qint32,qint32,qint32,qint32,qint32)) );
+    connect( p->telegram, SIGNAL(updatesGetStateAnswer(qint64, const UpdatesState&)),
+             SLOT(updatesGetState_slt(qint64, const UpdatesState&)) );
 
     connect( p->telegram, SIGNAL(uploadGetFileAnswer(qint64,StorageFileType,qint32,QByteArray,qint32,qint32,qint32)),
              SLOT(uploadGetFile_slt(qint64,StorageFileType,qint32,QByteArray,qint32,qint32,qint32)) );
@@ -2961,8 +2959,8 @@ void TelegramQml::try_init()
     connect( p->telegram, SIGNAL(uploadSendFileAnswer(qint64,qint32,qint32,qint32)),
              SLOT(uploadSendFile_slt(qint64,qint32,qint32,qint32)) );
 
-    connect( p->telegram, SIGNAL(helpGetInviteTextAnswer(qint64,QString)),
-             SIGNAL(helpGetInviteTextAnswer(qint64,QString)) );
+    connect( p->telegram, SIGNAL(helpGetInviteTextAnswer(qint64, const HelpInviteText&)),
+             SIGNAL(helpGetInviteTextAnswer(qint64, const HelpInviteText&)) );
 
     connect( p->telegram, SIGNAL(fatalError()), SLOT(fatalError_slt()), Qt::QueuedConnection);
 
@@ -3020,15 +3018,15 @@ void TelegramQml::authLogOut_slt(qint64 id, bool ok)
     Q_EMIT authLoggedOut();
 }
 
-void TelegramQml::authSendCode_slt(qint64 id, bool phoneRegistered, qint32 sendCallTimeout)
+void TelegramQml::authSendCode_slt(qint64 msgId, const AuthSentCode &result)
 {
-    Q_UNUSED(id)
+    Q_UNUSED(msgId)
     p->authNeeded = true;
     p->authLoggedIn = false;
 
     Q_EMIT authNeededChanged();
     Q_EMIT authLoggedInChanged();
-    Q_EMIT authCodeRequested(phoneRegistered, sendCallTimeout );
+    Q_EMIT authCodeRequested(result.phoneRegistered(), result.sendCallTimeout() );
 }
 
 void TelegramQml::authSendCodeError_slt(qint64 id)
@@ -3057,13 +3055,13 @@ void TelegramQml::authCheckPassword_slt(qint64 id, qint32 expires, const User &u
     insertUser(user);
 }
 
-void TelegramQml::authCheckPhone_slt(qint64 id, bool phoneRegistered)
+void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
 {
     p->checkphone_req_id = 0;
     QString phone = p->phoneCheckIds.take(id);
 
     if (phone.isEmpty()) {
-        p->phoneRegistered = phoneRegistered;
+        p->phoneRegistered = result.phoneRegistered();
         p->phoneInvited = false;
         p->phoneChecked = true;
 
@@ -3083,11 +3081,11 @@ void TelegramQml::authCheckPhone_slt(qint64 id, bool phoneRegistered)
             p->authCheckPhoneRetry++;
         }
     } else {
-        Q_EMIT phoneChecked(phone, phoneRegistered);
+        Q_EMIT phoneChecked(phone, result);
     }
 }
 
-void TelegramQml::authCheckedPhoneError_slt(qint64 msgId)
+void TelegramQml::authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
 {
     Q_UNUSED(msgId)
     p->checkphone_req_id = p->telegram->authCheckPhone();
@@ -4183,15 +4181,15 @@ void TelegramQml::updatesGetDifference_slt(qint64 id, const QList<Message> &mess
     Q_EMIT messagesReceived(receivedMessageCount);
 }
 
-void TelegramQml::updatesGetState_slt(qint64 id, qint32 pts, qint32 qts, qint32 date, qint32 seq, qint32 unreadCount)
+void TelegramQml::updatesGetState_slt(qint64 msgId, const UpdatesState &result)
 {
-    Q_UNUSED(id)
+    Q_UNUSED(msgId)
 
-    p->state.setDate(date);
-    p->state.setPts(pts);
-    p->state.setQts(qts);
-    p->state.setSeq(seq);
-    p->state.setUnreadCount(unreadCount);
+    p->state.setDate(result.date());
+    p->state.setPts(result.pts());
+    p->state.setQts(result.qts());
+    p->state.setSeq(result.seq());
+    p->state.setUnreadCount(result.unreadCount());
 
     QTimer::singleShot(100, this, SLOT(updatesGetDifference()));
 }

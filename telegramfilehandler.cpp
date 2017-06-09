@@ -329,7 +329,7 @@ bool TelegramFileHandler::download()
     if(p->progressType != TypeProgressEmpty)
         return false;
 
-    InputFileLocation::InputFileLocationType type;
+    InputFileLocation::InputFileLocationClassType type;
     switch(p->targetType)
     {
     case TypeTargetMediaAudio:

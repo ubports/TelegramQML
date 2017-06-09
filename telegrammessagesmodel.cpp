@@ -373,7 +373,7 @@ qint64 TelegramMessagesModel::peerId() const
 
 Peer TelegramMessagesModel::peer() const
 {
-    Peer peer( static_cast<Peer::PeerType>(p->dialog->peer()->classType()) );
+    Peer peer( static_cast<Peer::PeerClassType>(p->dialog->peer()->classType()) );
     peer.setChatId(p->dialog->peer()->chatId());
     peer.setUserId(p->dialog->peer()->userId());
     return peer;

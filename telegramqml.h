@@ -430,7 +430,7 @@ Q_SIGNALS:
     void authPhoneInvitedChanged();
     void authPhoneCheckedChanged();
     void authPasswordNeeded();
-    void phoneChecked(QString phone, bool phoneRegistered);
+    void phoneChecked(QString phone, const AuthCheckedPhone &result);
     void authPasswordProtectedError();
     void connectedChanged();
 
@@ -452,7 +452,7 @@ Q_SIGNALS:
 
     void contactsImportedContacts(qint32 importedCount, qint32 retryCount);
 
-    void helpGetInviteTextAnswer(qint64 id, QString message);
+    void helpGetInviteTextAnswer(qint64 id, const HelpInviteText &message);
 
     void errorChanged();
     void meChanged();
@@ -480,13 +480,13 @@ private Q_SLOTS:
     void authNeeded_slt();
     void authLoggedIn_slt();
     void authLogOut_slt(qint64 id, bool ok);
-    void authSendCode_slt(qint64 id, bool phoneRegistered, qint32 sendCallTimeout);
+    void authSendCode_slt(qint64 msgId, const AuthSentCode &result);
     void authSendCodeError_slt(qint64 id);
     void authSendCall_slt(qint64 id, bool ok);
     void authSendInvites_slt(qint64 id, bool ok);
     void authCheckPassword_slt(qint64 msgId, qint32 expires, const User &user);
-    void authCheckPhone_slt(qint64 id, bool phoneRegistered);
-    void authCheckedPhoneError_slt(qint64 msgId);
+    void authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result);
+    void authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);
     void authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText);
     void error_slt(qint64 id, qint32 errorCode, QString errorText, QString functionName);
@@ -562,7 +562,7 @@ private Q_SLOTS:
     void updates_slt(const QList<Update> & udts, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seq);
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
-    void updatesGetState_slt(qint64 id, qint32 pts, qint32 qts, qint32 date, qint32 seq, qint32 unreadCount);
+    void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
 
     void uploadGetFile_slt(qint64 id, const StorageFileType & type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total);
     void uploadSendFile_slt(qint64 fileId, qint32 partId, qint32 uploaded, qint32 totalSize);
