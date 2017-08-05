@@ -484,7 +484,7 @@ private Q_SLOTS:
     void authSendCodeError_slt(qint64 id);
     void authSendCall_slt(qint64 id, bool ok);
     void authSendInvites_slt(qint64 id, bool ok);
-    void authCheckPassword_slt(qint64 msgId, qint32 expires, const User &user);
+    void authCheckPassword_slt(qint64 msgId, const AuthAuthorization &result);
     void authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result);
     void authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);
@@ -499,22 +499,22 @@ private Q_SLOTS:
     void accountUpdateUsername_slt(qint64 id, const User &user);
 
 
-    void photosUploadProfilePhoto_slt(qint64 id, const Photo & photo, const QList<User> & users);
+    void photosUploadProfilePhoto_slt(qint64 id, const PhotosPhoto &result);
     void photosUpdateProfilePhoto_slt(qint64 id, const UserProfilePhoto & userProfilePhoto);
 
     void contactsBlock_slt(qint64 id, bool ok);
     void contactsUnblock_slt(qint64 id, bool ok);
-    void contactsImportContacts_slt(qint64 id, const QList<ImportedContact> &importedContacts, const QList<qint64> &retryContacts, const QList<User> &users);
+    void contactsImportContacts_slt(qint64 id, const ContactsImportedContacts &result);
     void contactsFound_slt(qint64 id, const QList<ContactFound> &founds, const QList<User> &users);
-    void contactsGetContacts_slt(qint64 id, bool modified, const QList<Contact> & contacts, const QList<User> & users);
-    void usersGetFullUser_slt(qint64 id, const User &user, const ContactsLink &link, const Photo &profilePhoto, const PeerNotifySettings &notifySettings, bool blocked, const QString &realFirstName, const QString &realLastName);
+    void contactsGetContacts_slt(qint64 id, const ContactsContacts &result);
+    void usersGetFullUser_slt(qint64 id, const UserFull &result);
     void usersGetUsers_slt(qint64 id, const QList<User> &users);
 
-    void messagesSendMessage_slt(qint64 id, qint32 msgId, qint32 date, const MessageMedia &media, qint32 pts, qint32 pts_count, qint32 seq, const QList<ContactsLink> & links);
+    void messagesSendMessage_slt(qint64 id, const MessagesSentMessage &result);
     void messagesForwardMessage_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardMessages_slt(qint64 id, const UpdatesType &updates);
     void messagesDeleteMessages_slt(qint64 id, const MessagesAffectedMessages &deletedMessages);
-    void messagesGetMessages_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users);
+    void messagesGetMessages_slt(qint64 id, const MessagesMessages &result);
 
     void messagesSendMedia_slt(qint64 id, const UpdatesType &updates);
     void messagesSendPhoto_slt(qint64 id, const UpdatesType &updates);
@@ -526,15 +526,15 @@ private Q_SLOTS:
     void messagesForwardVideo_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardAudio_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardDocument_slt(qint64 id, const UpdatesType &updates);
-    void messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QList<Dialog> & dialogs, const QList<Message> & messages, const QList<Chat> & chats, const QList<User> & users);
-    void messagesGetHistory_slt(qint64 id, qint32 sliceCount, const QList<Message> & messages, const QList<Chat> & chats, const QList<User> & users);
-    void messagesReadHistory_slt(qint64 id, qint32 pts, qint32 pts_count, qint32 offset);
+    void messagesGetDialogs_slt(qint64 id, const MessagesDialogs &result);
+    void messagesGetHistory_slt(qint64 id, const MessagesMessages &result);
+    void messagesReadHistory_slt(qint64 id, const MessagesAffectedHistory &result);
     void messagesReadEncryptedHistory_slt(qint64 id, bool ok);
-    void messagesDeleteHistory_slt(qint64 id, qint32 pts, qint32 seq, qint32 offset);
+    void messagesDeleteHistory_slt(qint64 id, const MessagesAffectedHistory &result);
 
-    void messagesSearch_slt(qint64 id, qint32 sliceCount, const QList<Message> & messages, const QList<Chat> & chats, const QList<User> & users);
+    void messagesSearch_slt(qint64 id, const MessagesMessages &result);
 
-    void messagesGetFullChat_slt(qint64 id, const ChatFull & chatFull, const QList<Chat> & chats, const QList<User> & users);
+    void messagesGetFullChat_slt(qint64 id, const MessagesChatFull &result);
     void messagesCreateChat_slt(qint64 id, const UpdatesType &updates);
     void messagesEditChatTitle_slt(qint64 id, const UpdatesType &updates);
     void messagesEditChatPhoto_slt(qint64 id, const UpdatesType &updates);

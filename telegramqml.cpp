@@ -28,6 +28,7 @@
 #include <secret/decrypter.h>
 #include <util/utils.h>
 #include <telegram.h>
+
 #include <limits>
 
 #include <QPointer>
@@ -301,8 +302,7 @@ void TelegramQml::setPhoneNumber(const QString &phone)
     connect(p->database, SIGNAL(dialogFounded(Dialog,bool)), SLOT(dbDialogFounded(Dialog,bool)));
     connect(p->database, SIGNAL(messageFounded(Message))   , SLOT(dbMessageFounded(Message))   );
     connect(p->database, SIGNAL(contactFounded(Contact))   , SLOT(dbContactFounded(Contact))   );
-    connect(p->database, SIGNAL(mediaKeyFounded(qint64,QByteArray,QByteArray)),
-            SLOT(dbMediaKeysFounded(qint64,QByteArray,QByteArray)) );
+    connect(p->database, SIGNAL(mediaKeyFounded(qint64,QByteArray,QByteArray)), SLOT(dbMediaKeysFounded(qint64,QByteArray,QByteArray)) );
 }
 
 QString TelegramQml::downloadPath() const
@@ -2781,6 +2781,8 @@ void TelegramQml::removeFiles(const QString &dir)
 
 void TelegramQml::try_init()
 {
+
+
     if( p->telegram )
     {
         delete p->telegram;
@@ -2791,6 +2793,8 @@ void TelegramQml::try_init()
     if(p->defaultHostAddress.isEmpty() || !p->defaultHostPort || !p->defaultHostDcId ||
        !p->appId || p->appHash.isEmpty() )
         return;
+
+    qInfo() << "TelegramQml::try_init begin";
 
     removeFiles(tempPath());
     QDir().mkpath(tempPath());
@@ -2803,170 +2807,94 @@ void TelegramQml::try_init()
                                p->appId, p->appHash, p->phoneNumber, p->configPath, pKeyFile);
     p->tsettings = p->telegram->settings();
 
-    connect( p->telegram, SIGNAL(authNeeded())                          , SLOT(authNeeded_slt())                           );
-    connect( p->telegram, SIGNAL(authLoggedIn())                        , SLOT(authLoggedIn_slt())                         );
-    connect( p->telegram, SIGNAL(authLogOutAnswer(qint64,bool))         , SLOT(authLogOut_slt(qint64,bool))                );
-    connect( p->telegram, SIGNAL(authCheckPhoneAnswer(qint64,const AuthCheckedPhone&))     , SLOT(authCheckPhone_slt(qint64,const AuthCheckedPhone&)));
-    connect( p->telegram, SIGNAL(authCheckPhoneError(qint64,qint32, const QString&))         , SLOT(authCheckPhoneError_slt(qint64,qint32, const QString&)));
-    connect( p->telegram, SIGNAL(authSendCallAnswer(qint64,bool))       , SLOT(authSendCall_slt(qint64,bool))              );
-    connect( p->telegram, SIGNAL(authSendCodeAnswer(qint64, const AuthSentCode&)), SLOT(authSendCode_slt(qint64, const AuthSentCode&)));
-    connect( p->telegram, SIGNAL(authSendCodeError(qint64))             , SLOT(authSendCodeError_slt(qint64))              );
-    connect( p->telegram, SIGNAL(authSendInvitesAnswer(qint64,bool))    , SLOT(authSendInvites_slt(qint64,bool))           );
-    connect( p->telegram, SIGNAL(authSignInError(qint64,qint32,QString)), SLOT(authSignInError_slt(qint64,qint32,QString)) );
-    connect( p->telegram, SIGNAL(authSignUpError(qint64,qint32,QString)), SLOT(authSignUpError_slt(qint64,qint32,QString)) );
-    connect( p->telegram, SIGNAL(accountRegisterDeviceAnswer(qint64,bool)), SLOT(accountRegisterDevice_slt(qint64,bool))   );
-    connect( p->telegram, SIGNAL(accountUnregisterDeviceAnswer(qint64,bool)), SLOT(accountUnregisterDevice_slt(qint64,bool)));
-    connect( p->telegram, SIGNAL(error(qint64,qint32,QString,QString))  , SLOT(error_slt(qint64,qint32,QString,QString))   );
-    connect( p->telegram, SIGNAL(connected())                           , SIGNAL(connectedChanged())                       );
-    connect( p->telegram, SIGNAL(disconnected())                        , SIGNAL(connectedChanged())                       );
-    connect( p->telegram, SIGNAL(authCheckPasswordAnswer(qint64,qint32,User)),
-             SLOT(authCheckPassword_slt(qint64,qint32,User)));
+    qInfo() << "Connecting all signals to Telegram API...";
+    ASSERT(connect( p->telegram, &Telegram::authNeeded, this, &TelegramQml::authNeeded_slt));
+    ASSERT(connect( p->telegram, &Telegram::authLoggedIn, this, &TelegramQml::authLoggedIn_slt));
+    ASSERT(connect( p->telegram, &Telegram::authLogOutAnswer, this, &TelegramQml::authLogOut_slt));
+    ASSERT(connect( p->telegram, &Telegram::authCheckPhoneAnswer, this, &TelegramQml::authCheckPhone_slt));
+    ASSERT(connect( p->telegram, &Telegram::authCheckPhoneError, this, &TelegramQml::authCheckPhoneError_slt));
+    ASSERT(connect( p->telegram, &Telegram::authSendCallAnswer, this, &TelegramQml::authSendCall_slt));
+    ASSERT(connect( p->telegram, &Telegram::authSendCodeAnswer, this, &TelegramQml::authSendCode_slt));
+    ASSERT(connect( p->telegram, &Telegram::authSendCodeError, this, &TelegramQml::authSendCodeError_slt));
+    ASSERT(connect( p->telegram, &Telegram::authSendInvitesAnswer, this, &TelegramQml::authSendInvites_slt));
+    ASSERT(connect( p->telegram, &Telegram::authSignInError, this, &TelegramQml::authSignInError_slt));
+    ASSERT(connect( p->telegram, &Telegram::authSignUpError, this, &TelegramQml::authSignUpError_slt));
+    ASSERT(connect( p->telegram, &Telegram::accountRegisterDeviceAnswer, this, &TelegramQml::accountRegisterDevice_slt));
+    ASSERT(connect( p->telegram, &Telegram::accountUnregisterDeviceAnswer, this, &TelegramQml::accountUnregisterDevice_slt));
+    ASSERT(connect( p->telegram, &Telegram::error, this, &TelegramQml::error_slt));
+    ASSERT(connect( p->telegram, &Telegram::connected, this, &TelegramQml::connectedChanged));
+    ASSERT(connect( p->telegram, &Telegram::disconnected, this, &TelegramQml::connectedChanged));
+    ASSERT(connect( p->telegram, &Telegram::authCheckPasswordAnswer, this, &TelegramQml::authCheckPassword_slt));
 
-    connect( p->telegram, SIGNAL(accountGetWallPapersAnswer(qint64,QList<WallPaper>)),
-             SLOT(accountGetWallPapers_slt(qint64,QList<WallPaper>)) );
-    connect( p->telegram, SIGNAL(accountGetPasswordAnswer(qint64,AccountPassword)),
-             SLOT(accountGetPassword_slt(qint64,AccountPassword)));
-    connect( p->telegram, SIGNAL(accountCheckUsernameAnswer(qint64,bool)),
-             SLOT(accountCheckUsername_slt(qint64,bool)) );
-    connect( p->telegram, SIGNAL(accountUpdateUsernameAnswer(qint64,const User&)),
-             SLOT(accountUpdateUsername_slt(qint64,const User&)) );
+    ASSERT(connect( p->telegram, &Telegram::accountGetWallPapersAnswer, this, &TelegramQml::accountGetWallPapers_slt));
+    ASSERT(connect( p->telegram, &Telegram::accountGetPasswordAnswer, this, &TelegramQml::accountGetPassword_slt));
+    ASSERT(connect( p->telegram, &Telegram::accountCheckUsernameAnswer, this, &TelegramQml::accountCheckUsername_slt));
+    ASSERT(connect( p->telegram, &Telegram::accountUpdateUsernameAnswer, this, &TelegramQml::accountUpdateUsername_slt));
 
-    connect( p->telegram, SIGNAL(contactsImportContactsAnswer(qint64,QList<ImportedContact>,QList<qint64>,QList<User>)),
-             SLOT(contactsImportContacts_slt(qint64,QList<ImportedContact>,QList<qint64>,QList<User>)));
-    connect( p->telegram, SIGNAL(photosUploadProfilePhotoAnswer(qint64,Photo,QList<User>)),
-             SLOT(photosUploadProfilePhoto_slt(qint64,Photo,QList<User>)) );
-    connect( p->telegram, SIGNAL(photosUpdateProfilePhotoAnswer(qint64,UserProfilePhoto)),
-             SLOT(photosUpdateProfilePhoto_slt(qint64,UserProfilePhoto)) );
+    ASSERT(connect( p->telegram, &Telegram::contactsImportContactsAnswer, this, &TelegramQml::contactsImportContacts_slt));
+    ASSERT(connect( p->telegram, &Telegram::photosUploadProfilePhotoAnswer, this, &TelegramQml::photosUploadProfilePhoto_slt));
+    ASSERT(connect( p->telegram, &Telegram::photosUpdateProfilePhotoAnswer, this, &TelegramQml::photosUpdateProfilePhoto_slt));
 
-    connect( p->telegram, SIGNAL(contactsBlockAnswer(qint64,bool)), SLOT(contactsBlock_slt(qint64,bool)));
-    connect( p->telegram, SIGNAL(contactsUnblockAnswer(qint64,bool)), SLOT(contactsUnblock_slt(qint64,bool)));
+    ASSERT(connect( p->telegram, &Telegram::contactsBlockAnswer, this, &TelegramQml::contactsBlock_slt));
+    ASSERT(connect( p->telegram, &Telegram::contactsUnblockAnswer, this, &TelegramQml::contactsUnblock_slt));
 
-    connect( p->telegram, SIGNAL(usersGetFullUserAnswer(qint64,User,ContactsLink,Photo,PeerNotifySettings,bool,QString,QString)),
-             SLOT(usersGetFullUser_slt(qint64,User,ContactsLink,Photo,PeerNotifySettings,bool,QString,QString)) );
-    connect( p->telegram, SIGNAL(usersGetUsersAnswer(qint64,QList<User>)),
-             SLOT(usersGetUsers_slt(qint64,QList<User>)));
+    ASSERT(connect( p->telegram, &Telegram::usersGetFullUserAnswer, this, &TelegramQml::usersGetFullUser_slt));
+    ASSERT(connect( p->telegram, &Telegram::usersGetUsersAnswer, this, &TelegramQml::usersGetUsers_slt));
 
-    connect( p->telegram, SIGNAL(messagesGetDialogsAnswer(qint64,qint32,QList<Dialog>,QList<Message>,QList<Chat>,QList<User>)),
-             SLOT(messagesGetDialogs_slt(qint64,qint32,QList<Dialog>,QList<Message>,QList<Chat>,QList<User>)) );
-    connect( p->telegram, SIGNAL(messagesGetHistoryAnswer(qint64,qint32,QList<Message>,QList<Chat>,QList<User>)),
-             SLOT(messagesGetHistory_slt(qint64,qint32,QList<Message>,QList<Chat>,QList<User>)) );
-    connect( p->telegram, SIGNAL(messagesReadHistoryAnswer(qint64,qint32,qint32,qint32)),
-             SLOT(messagesReadHistory_slt(qint64,qint32,qint32,qint32)) );
-    connect( p->telegram, SIGNAL(messagesReadEncryptedHistoryAnswer(qint64,bool)),
-             SLOT(messagesReadEncryptedHistory_slt(qint64,bool)) );
-    connect( p->telegram, SIGNAL(messagesGetMessagesAnswer(qint64,qint32,QList<Message>,QList<Chat>,QList<User>)),
-             SLOT(messagesGetMessages_slt(qint64,qint32,QList<Message>,QList<Chat>,QList<User>)) );
+    ASSERT(connect( p->telegram, &Telegram::messagesGetDialogsAnswer, this, &TelegramQml::messagesGetDialogs_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesGetHistoryAnswer, this, &TelegramQml::messagesGetHistory_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesReadHistoryAnswer,  this, &TelegramQml::messagesReadHistory_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesReadEncryptedHistoryAnswer, this, &TelegramQml::messagesReadEncryptedHistory_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesGetMessagesAnswer, this, &TelegramQml::messagesGetMessages_slt));
 
-    connect( p->telegram, SIGNAL(messagesSendMessageAnswer(qint64,qint32,qint32,MessageMedia,qint32,qint32,qint32,QList<ContactsLink>)),
-             SLOT(messagesSendMessage_slt(qint64,qint32,qint32,MessageMedia,qint32,qint32,qint32,QList<ContactsLink>)) );
-    connect( p->telegram, SIGNAL(messagesForwardMessageAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesForwardMessage_slt(qint64,UpdatesType)));
-    connect( p->telegram, SIGNAL(messagesForwardMessagesAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesForwardMessages_slt(qint64,UpdatesType)));
-    connect( p->telegram, SIGNAL(messagesDeleteMessagesAnswer(qint64,MessagesAffectedMessages)),
-             SLOT(messagesDeleteMessages_slt(qint64,MessagesAffectedMessages)) );
-    connect( p->telegram, SIGNAL(messagesDeleteHistoryAnswer(qint64,qint32,qint32,qint32)),
-             SLOT(messagesDeleteHistory_slt(qint64,qint32,qint32,qint32)) );
+    ASSERT(connect( p->telegram, &Telegram::messagesSendMessageAnswer, this, &TelegramQml::messagesSendMessage_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesForwardMessageAnswer, this, &TelegramQml::messagesForwardMessage_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesForwardMessagesAnswer, this, &TelegramQml::messagesForwardMessages_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesDeleteMessagesAnswer, this, &TelegramQml::messagesDeleteMessages_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesDeleteHistoryAnswer, this, &TelegramQml::messagesDeleteHistory_slt));
 
-    connect( p->telegram, SIGNAL(messagesSearchAnswer(qint64,qint32,QList<Message>,QList<Chat>,QList<User>)),
-             SLOT(messagesSearch_slt(qint64,qint32,QList<Message>,QList<Chat>,QList<User>)) );
+    ASSERT(connect( p->telegram, &Telegram::messagesSearchAnswer, this, &TelegramQml::messagesSearch_slt));
 
-    connect( p->telegram, SIGNAL(messagesSendAudioAnswer(qint64,UpdatesType)),
-             SLOT(messagesSendAudio_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesSendVideoAnswer(qint64,UpdatesType)),
-             SLOT(messagesSendVideo_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesSendPhotoAnswer(qint64,UpdatesType)),
-             SLOT(messagesSendPhoto_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesSendDocumentAnswer(qint64,UpdatesType)),
-             SLOT(messagesSendDocument_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesSendMediaAnswer(qint64,UpdatesType)),
-             SLOT(messagesSendMedia_slt(qint64,UpdatesType)) );
+    ASSERT(connect( p->telegram, &Telegram::messagesSendMediaAnswer, this, &TelegramQml::messagesSendMedia_slt));
 
-    connect( p->telegram, SIGNAL(messagesForwardAudioAnswer(qint64,UpdatesType)),
-             SLOT(messagesForwardAudio_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesForwardVideoAnswer(qint64,UpdatesType)),
-             SLOT(messagesForwardVideo_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesForwardPhotoAnswer(qint64,UpdatesType)),
-             SLOT(messagesForwardPhoto_slt(qint64,UpdatesType)) );
-    connect( p->telegram, SIGNAL(messagesForwardDocumentAnswer(qint64,UpdatesType)),
-             SLOT(messagesForwardDocument_slt(qint64,UpdatesType)) );
+    ASSERT(connect( p->telegram, &Telegram::messagesGetFullChatAnswer, this, &TelegramQml::messagesGetFullChat_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesCreateChatAnswer, this, &TelegramQml::messagesCreateChat_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesEditChatTitleAnswer, this, &TelegramQml::messagesEditChatTitle_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesAddChatUserAnswer, this, &TelegramQml::messagesAddChatUser_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesDeleteChatUserAnswer, this, &TelegramQml::messagesDeleteChatUser_slt));
 
-    connect( p->telegram, SIGNAL(messagesGetFullChatAnswer(qint64,ChatFull,QList<Chat>,QList<User>)),
-             SLOT(messagesGetFullChat_slt(qint64,ChatFull,QList<Chat>,QList<User>)) );
-    connect( p->telegram, SIGNAL(messagesCreateChatAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesCreateChat_slt(qint64,const UpdatesType&)));
-    connect( p->telegram, SIGNAL(messagesEditChatTitleAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesEditChatTitle_slt(qint64,const UpdatesType&)));
-    connect( p->telegram, SIGNAL(messagesEditChatPhotoStatedMessageAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesEditChatPhoto_slt(qint64,const UpdatesType&)));
-    connect( p->telegram, SIGNAL(messagesAddChatUserAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesAddChatUser_slt(qint64,const UpdatesType&)));
-    connect( p->telegram, SIGNAL(messagesDeleteChatUserAnswer(qint64,const UpdatesType&)),
-             SLOT(messagesDeleteChatUser_slt(qint64,const UpdatesType&)));
+    ASSERT(connect( p->telegram, &Telegram::messagesCreateEncryptedChatAnswer, this, &TelegramQml::messagesCreateEncryptedChat_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesEncryptedChatRequested, this, &TelegramQml::messagesEncryptedChatRequested_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesEncryptedChatDiscarded, this, &TelegramQml::messagesEncryptedChatDiscarded_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesEncryptedChatCreated, this, &TelegramQml::messagesEncryptedChatCreated_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesSendEncryptedAnswer, this, &TelegramQml::messagesSendEncrypted_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesSendEncryptedFileAnswer, this, &TelegramQml::messagesSendEncryptedFile_slt));
 
-    connect( p->telegram, SIGNAL(messagesCreateEncryptedChatAnswer(qint32,qint32,qint32,qint64)),
-             SLOT(messagesCreateEncryptedChat_slt(qint32,qint32,qint32,qint64)) );
-    connect( p->telegram, SIGNAL(messagesEncryptedChatRequested(qint32,qint32,qint32,qint64)),
-             SLOT(messagesEncryptedChatRequested_slt(qint32,qint32,qint32,qint64)) );
-    connect( p->telegram, SIGNAL(messagesEncryptedChatDiscarded(qint32)),
-             SLOT(messagesEncryptedChatDiscarded_slt(qint32)) );
-    connect( p->telegram, SIGNAL(messagesEncryptedChatCreated(qint32,qint32,qint32,qint64)),
-             SLOT(messagesEncryptedChatCreated_slt(qint32)) );
-    connect( p->telegram, SIGNAL(messagesSendEncryptedAnswer(qint64,qint32,EncryptedFile)),
-             SLOT(messagesSendEncrypted_slt(qint64,qint32,EncryptedFile)) );
-    connect( p->telegram, SIGNAL(messagesSendEncryptedFileAnswer(qint64,qint32,EncryptedFile)),
-             SLOT(messagesSendEncryptedFile_slt(qint64,qint32,EncryptedFile)) );
+    ASSERT(connect( p->telegram, &Telegram::contactsGetContactsAnswer, this, &TelegramQml::contactsGetContacts_slt));
 
-    connect( p->telegram, SIGNAL(messagesGetStickersAnwer(qint64,MessagesStickers)),
-             SLOT(messagesGetStickers_slt(qint64,MessagesStickers)));
-    connect( p->telegram, SIGNAL(messagesGetAllStickersAnwer(qint64,MessagesAllStickers)),
-             SLOT(messagesGetAllStickers_slt(qint64,MessagesAllStickers)));
-    connect( p->telegram, SIGNAL(messagesGetStickerSetAnwer(qint64,MessagesStickerSet)),
-             SLOT(messagesGetStickerSet_slt(qint64,MessagesStickerSet)));
-    connect( p->telegram, SIGNAL(messagesInstallStickerSetAnwer(qint64,bool)),
-             SLOT(messagesInstallStickerSet_slt(qint64,bool)));
-    connect( p->telegram, SIGNAL(messagesUninstallStickerSetAnwer(qint64,bool)),
-             SLOT(messagesUninstallStickerSet_slt(qint64,bool)));
+    ASSERT(connect( p->telegram, &Telegram::updates, this, &TelegramQml::updates_slt));
+    ASSERT(connect( p->telegram, &Telegram::updatesCombined, this, &TelegramQml::updatesCombined_slt));
+    ASSERT(connect( p->telegram, &Telegram::updateShort, this, &TelegramQml::updateShort_slt));
+    ASSERT(connect( p->telegram, &Telegram::updateShortChatMessage, this, &TelegramQml::updateShortChatMessage_slt));
+    ASSERT(connect( p->telegram, &Telegram::updateShortMessage, this, &TelegramQml::updateShortMessage_slt));
+    ASSERT(connect( p->telegram, &Telegram::updatesTooLong, this, &TelegramQml::updatesTooLong_slt));
+    ASSERT(connect( p->telegram, &Telegram::updateSecretChatMessage, this, &TelegramQml::updateSecretChatMessage_slt));
+    //ASSERT(connect( p->telegram, &Telegram::updatesGetDifferenceAnswer, this, &TelegramQml::updatesGetDifference_slt));
+    ASSERT(connect( p->telegram, &Telegram::updatesGetStateAnswer, this, &TelegramQml::updatesGetState_slt));
 
-    connect( p->telegram, SIGNAL(contactsGetContactsAnswer(qint64,bool,QList<Contact>,QList<User>)),
-             SLOT(contactsGetContacts_slt(qint64,bool,QList<Contact>,QList<User>)) );
-    connect( p->telegram, SIGNAL(contactsFound(qint64,QList<ContactFound>,QList<User>)),
-             SLOT(contactsFound_slt(qint64,QList<ContactFound>,QList<User>)));
+    ASSERT(connect( p->telegram, &Telegram::uploadGetFileAnswer, this, &TelegramQml::uploadGetFile_slt));
+    ASSERT(connect( p->telegram, &Telegram::uploadCancelFileAnswer, this, &TelegramQml::uploadCancelFile_slt));
+    ASSERT(connect( p->telegram, &Telegram::uploadSendFileAnswer, this, &TelegramQml::uploadSendFile_slt));
 
-    connect( p->telegram, SIGNAL(updates(QList<Update>,QList<User>,QList<Chat>,qint32,qint32)),
-             SLOT(updates_slt(QList<Update>,QList<User>,QList<Chat>,qint32,qint32)) );
-    connect( p->telegram, SIGNAL(updatesCombined(QList<Update>,QList<User>,QList<Chat>,qint32,qint32,qint32)),
-             SLOT(updatesCombined_slt(QList<Update>,QList<User>,QList<Chat>,qint32,qint32,qint32)) );
-    connect( p->telegram, SIGNAL(updateShort(Update,qint32)),
-             SLOT(updateShort_slt(Update,qint32)) );
-    connect( p->telegram, SIGNAL(updateShortChatMessage(qint32,qint32,qint32,QString,qint32,qint32,qint32,qint32,qint32,qint32,bool,bool)),
-             SLOT(updateShortChatMessage_slt(qint32,qint32,qint32,QString,qint32,qint32,qint32,qint32,qint32,qint32,bool,bool)) );
-    connect( p->telegram, SIGNAL(updateShortMessage(qint32,qint32,QString,qint32,qint32,qint32,qint32,qint32,qint32,bool,bool)),
-             SLOT(updateShortMessage_slt(qint32,qint32,QString,qint32,qint32,qint32,qint32,qint32,qint32,bool,bool)) );
-    connect( p->telegram, SIGNAL(updatesTooLong()),
-             SLOT(updatesTooLong_slt()) );
-    connect( p->telegram, SIGNAL(updateSecretChatMessage(SecretChatMessage,qint32)),
-             SLOT(updateSecretChatMessage_slt(SecretChatMessage,qint32)) );
-    connect( p->telegram, SIGNAL(updatesGetDifferenceAnswer(qint64,QList<Message>,QList<SecretChatMessage>,QList<Update>,QList<Chat>,QList<User>,UpdatesState,bool)),
-             SLOT(updatesGetDifference_slt(qint64,QList<Message>,QList<SecretChatMessage>,QList<Update>,QList<Chat>,QList<User>,UpdatesState,bool)) );
-    connect( p->telegram, SIGNAL(updatesGetStateAnswer(qint64, const UpdatesState&)),
-             SLOT(updatesGetState_slt(qint64, const UpdatesState&)) );
+    ASSERT(connect( p->telegram, &Telegram::helpGetInviteTextAnswer, this, &TelegramQml::helpGetInviteTextAnswer));
 
-    connect( p->telegram, SIGNAL(uploadGetFileAnswer(qint64,StorageFileType,qint32,QByteArray,qint32,qint32,qint32)),
-             SLOT(uploadGetFile_slt(qint64,StorageFileType,qint32,QByteArray,qint32,qint32,qint32)) );
-    connect( p->telegram, SIGNAL(uploadCancelFileAnswer(qint64,bool)),
-             SLOT(uploadCancelFile_slt(qint64,bool)) );
-    connect( p->telegram, SIGNAL(uploadSendFileAnswer(qint64,qint32,qint32,qint32)),
-             SLOT(uploadSendFile_slt(qint64,qint32,qint32,qint32)) );
-
-    connect( p->telegram, SIGNAL(helpGetInviteTextAnswer(qint64, const HelpInviteText&)),
-             SIGNAL(helpGetInviteTextAnswer(qint64, const HelpInviteText&)) );
-
-    connect( p->telegram, SIGNAL(fatalError()), SLOT(fatalError_slt()), Qt::QueuedConnection);
+    ASSERT(connect( p->telegram, &Telegram::fatalError, this, &TelegramQml::fatalError_slt, Qt::QueuedConnection));
 
     Q_EMIT telegramChanged();
 
     p->telegram->init();
+    qInfo() << "TelegramQml::try_init end";
+
 }
 
 void TelegramQml::authNeeded_slt()
@@ -3047,16 +2975,16 @@ void TelegramQml::authSendInvites_slt(qint64 id, bool ok)
     Q_EMIT authInvitesSent(ok);
 }
 
-void TelegramQml::authCheckPassword_slt(qint64 id, qint32 expires, const User &user)
+void TelegramQml::authCheckPassword_slt(qint64 id, const AuthAuthorization& result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(expires)
 
-    insertUser(user);
+    insertUser(result.user());
 }
 
 void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
 {
+    qInfo() << "TelegramQml::authCheckPhone_slt begin";
     p->checkphone_req_id = 0;
     QString phone = p->phoneCheckIds.take(id);
 
@@ -3083,6 +3011,7 @@ void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
     } else {
         Q_EMIT phoneChecked(phone, result);
     }
+    qInfo() << "TelegramQml::authCheckPhone_slt end";
 }
 
 void TelegramQml::authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
@@ -3229,11 +3158,11 @@ void TelegramQml::accountUpdateUsername_slt(qint64 id, const User &user)
     insertUser(user);
 }
 
-void TelegramQml::photosUploadProfilePhoto_slt(qint64 id, const Photo &photo, const QList<User> &users)
+void TelegramQml::photosUploadProfilePhoto_slt(qint64 id, const PhotosPhoto &result)
 {
     Q_UNUSED(id)
 
-    p->telegram->photosUpdateProfilePhoto(photo.id(), photo.accessHash());
+    p->telegram->photosUpdateProfilePhoto(result.photo().id(), result.photo().accessHash());
 
     UserObject *user = p->users.value(me());
     if(user)
@@ -3243,7 +3172,7 @@ void TelegramQml::photosUploadProfilePhoto_slt(qint64 id, const Photo &photo, co
         p->upload_photo_path.clear();
     }
 
-    Q_FOREACH( const User & user, users )
+    Q_FOREACH( const User & user, result.users() )
         insertUser(user);
 
     p->profile_upload_id = 0;
@@ -3273,19 +3202,17 @@ void TelegramQml::contactsUnblock_slt(qint64 id, bool ok)
     if (ok) unblockUser(userId);
 }
 
-void TelegramQml::contactsImportContacts_slt(qint64 id, const QList<ImportedContact> &importedContacts, const QList<qint64> &retryContacts, const QList<User> &users)
+void TelegramQml::contactsImportContacts_slt(qint64 id, const ContactsImportedContacts &result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(importedContacts)
-    Q_UNUSED(retryContacts)
 
-    Q_FOREACH( const User & user, users )
+    Q_FOREACH( const User & user, result.users() )
         insertUser(user);
 
     timerUpdateDialogs(100);
     timerUpdateContacts(100);
 
-    Q_EMIT contactsImportedContacts(importedContacts.length(), retryContacts.length());
+    Q_EMIT contactsImportedContacts(result.imported().length(), result.retryContacts().length());
 }
 
 void TelegramQml::contactsFound_slt(qint64 id, const QList<ContactFound> &founds, const QList<User> &users)
@@ -3301,29 +3228,27 @@ void TelegramQml::contactsFound_slt(qint64 id, const QList<ContactFound> &founds
     Q_EMIT contactsFounded(result);
 }
 
-void TelegramQml::contactsGetContacts_slt(qint64 id, bool modified, const QList<Contact> &contacts, const QList<User> &users)
+void TelegramQml::contactsGetContacts_slt(qint64 id, const ContactsContacts &result)
 {
     Q_UNUSED(id)
 
-    Q_FOREACH( const User & user, users )
-        insertUser(user, modified);
-    Q_FOREACH( const Contact & contact, contacts )
-        insertContact(contact, modified);
+    if (result.classType() == ContactsContacts::ContactsContactsClassType::typeContactsContacts)
+    {
+    Q_FOREACH( const User & user, result.users() )
+        insertUser(user);
+    Q_FOREACH( const Contact & contact, result.contacts() )
+        insertContact(contact);
+    }
 }
 
-void TelegramQml::usersGetFullUser_slt(qint64 id, const User &user, const ContactsLink &link, const Photo &profilePhoto, const PeerNotifySettings &notifySettings, bool blocked, const QString &realFirstName, const QString &realLastName)
+void TelegramQml::usersGetFullUser_slt(qint64 id, const UserFull &result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(link)
-    Q_UNUSED(profilePhoto)
-    Q_UNUSED(notifySettings)
-    Q_UNUSED(realFirstName)
-    Q_UNUSED(realLastName)
-    insertUser(user);
-    if (blocked) {
-        blockUser(user.id());
+    insertUser(result.user());
+    if (result.blocked()) {
+        blockUser(result.user().id());
     } else {
-        unblockUser(user.id());
+        unblockUser(result.user().id());
     }
 }
 
@@ -3334,12 +3259,8 @@ void TelegramQml::usersGetUsers_slt(qint64 id, const QList<User> &users)
         insertUser(user);
 }
 
-void TelegramQml::messagesSendMessage_slt(qint64 id, qint32 msgId, qint32 date, const MessageMedia &media, qint32 pts, qint32 pts_count, qint32 seq, const QList<ContactsLink> &links)
+void TelegramQml::messagesSendMessage_slt(qint64 id, const MessagesSentMessage& result)
 {
-    Q_UNUSED(pts)
-    Q_UNUSED(pts_count)
-    Q_UNUSED(seq)
-    Q_UNUSED(links)
 
     if( !p->pend_messages.contains(id) )
         return;
@@ -3355,13 +3276,13 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, qint32 msgId, qint32 date, 
 
     Message msg(Message::typeMessage);
     msg.setFromId(msgObj->fromId());
-    msg.setId(msgId);
-    msg.setDate(date);
+    msg.setId(result.id());
+    msg.setDate(result.date());
     msg.setFlags(UNREAD_OUT_TO_FLAG(msgObj->unread(), msgObj->out()));
     msg.setToId(peer);
     msg.setMessage(msgObj->message());
     msg.setReplyToMsgId(msgObj->replyToMsgId());
-    msg.setMedia(media);
+    msg.setMedia(result.media());
 
     qint64 did = msg.toId().chatId();
     if( !did )
@@ -3371,7 +3292,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, qint32 msgId, qint32 date, 
     insertMessage(msg);
     timerUpdateDialogs(3000);
 
-    Q_EMIT messageSent(id, p->messages.value(msgId));
+    Q_EMIT messageSent(id, p->messages.value(result.id()));
     Q_EMIT messagesSent(1);
 }
 
@@ -3398,16 +3319,15 @@ void TelegramQml::messagesDeleteMessages_slt(qint64 id, const MessagesAffectedMe
     timerUpdateDialogs(3000);
 }
 
-void TelegramQml::messagesGetMessages_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users)
+void TelegramQml::messagesGetMessages_slt(qint64 id, const MessagesMessages &result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(sliceCount)
 
-    Q_FOREACH( const Chat & chat, chats )
+    Q_FOREACH( const Chat & chat, result.chats() )
         insertChat(chat);
-    Q_FOREACH( const User & user, users )
+    Q_FOREACH( const User & user, result.users() )
         insertUser(user);
-    Q_FOREACH( const Message & message, messages )
+    Q_FOREACH( const Message & message, result.messages() )
         insertMessage(message);
 }
 
@@ -3509,20 +3429,19 @@ void TelegramQml::messagesForwardDocument_slt(qint64 id, const UpdatesType &upda
     Q_EMIT messagesSent(1);
 }
 
-void TelegramQml::messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QList<Dialog> &dialogs, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users)
+void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(sliceCount)
 
-    Q_FOREACH( const User & u, users )
+    Q_FOREACH( const User & u, result.users() )
         insertUser(u);
-    Q_FOREACH( const Chat & c, chats )
+    Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c);
-    Q_FOREACH( const Message & m, messages )
+    Q_FOREACH( const Message & m, result.messages() )
         insertMessage(m);
 
     QSet<qint64> removedDialogs = p->dialogs_list.toSet();
-    Q_FOREACH( const Dialog & d, dialogs )
+    Q_FOREACH( const Dialog & d, result.dialogs() )
     {
         insertDialog(d);
         qint64 dialogId = d.peer().chatId()?d.peer().chatId():d.peer().userId();
@@ -3544,26 +3463,23 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QLi
     refreshSecretChats();
 }
 
-void TelegramQml::messagesGetHistory_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users)
+void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(sliceCount)
 
-    Q_FOREACH( const User & u, users )
+    Q_FOREACH( const User & u, result.users() )
         insertUser(u);
-    Q_FOREACH( const Chat & c, chats )
+    Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c);
-    Q_FOREACH( const Message & m, messages )
+    Q_FOREACH( const Message & m, result.messages() )
         insertMessage(m);
 
     Q_EMIT messagesChanged(false);
 }
 
-void TelegramQml::messagesReadHistory_slt(qint64 id, qint32 pts, qint32 pts_count, qint32 offset)
+void TelegramQml::messagesReadHistory_slt(qint64 id, const MessagesAffectedHistory &result)
 {
-    Q_UNUSED(pts);
-    Q_UNUSED(pts_count);
-    Q_UNUSED(offset);
+    Q_UNUSED(result);
 
     qint64 peerId = p->read_history_requests.take(id);
     if (peerId)
@@ -3587,15 +3503,11 @@ void TelegramQml::messagesReadHistory_slt(qint64 id, qint32 pts, qint32 pts_coun
 void TelegramQml::messagesReadEncryptedHistory_slt(qint64 id, bool ok)
 {
     if(ok)
-        messagesReadHistory_slt(id, 0, 0, 0);
+        messagesReadHistory_slt(id, MessagesAffectedHistory());
 }
 
-void TelegramQml::messagesDeleteHistory_slt(qint64 id, qint32 pts, qint32 seq, qint32 offset)
+void TelegramQml::messagesDeleteHistory_slt(qint64 id, const MessagesAffectedHistory &result)
 {
-    Q_UNUSED(pts)
-    Q_UNUSED(seq)
-    Q_UNUSED(offset)
-
     qint64 peerId = p->delete_history_requests.take(id);
     if (peerId)
     {
@@ -3603,18 +3515,17 @@ void TelegramQml::messagesDeleteHistory_slt(qint64 id, qint32 pts, qint32 seq, q
     }
 }
 
-void TelegramQml::messagesSearch_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users)
+void TelegramQml::messagesSearch_slt(qint64 id, const MessagesMessages &result)
 {
     Q_UNUSED(id)
-    Q_UNUSED(sliceCount)
 
     QList<qint64> res;
 
-    Q_FOREACH( const User & u, users )
+    Q_FOREACH( const User & u, result.users() )
         insertUser(u);
-    Q_FOREACH( const Chat & c, chats )
+    Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c);
-    Q_FOREACH( const Message & m, messages )
+    Q_FOREACH( const Message & m, result.messages() )
     {
         insertMessage(m);
         res << m.id();
@@ -3623,24 +3534,24 @@ void TelegramQml::messagesSearch_slt(qint64 id, qint32 sliceCount, const QList<M
     Q_EMIT searchDone(res);
 }
 
-void TelegramQml::messagesGetFullChat_slt(qint64 id, const ChatFull &chatFull, const QList<Chat> &chats, const QList<User> &users)
+void TelegramQml::messagesGetFullChat_slt(qint64 id, const MessagesChatFull &result)
 {
     Q_UNUSED(id)
-    Q_FOREACH( const User & u, users )
+    Q_FOREACH( const User & u, result.users() )
         insertUser(u);
-    Q_FOREACH( const Chat & c, chats )
+    Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c);
 
-    ChatFullObject *obj = p->chatfulls.value(chatFull.id());
+    ChatFullObject *obj = p->chatfulls.value(result.fullChat().id());
     if( !obj )
     {
-        obj = new ChatFullObject(chatFull, this);
-        p->chatfulls.insert(chatFull.id(), obj);
+        obj = new ChatFullObject(result.fullChat(), this);
+        p->chatfulls.insert(result.fullChat().id(), obj);
     }
     else
-        *obj = chatFull;
+        *obj = result.fullChat();
 
-    qint64 peerId = chatFull.id();
+    qint64 peerId = result.fullChat().id();
     if(p->deleteChatIds.contains(peerId)) {
         ChatParticipantsObject* object = obj->participants();
         ChatParticipantList* list = object->participants();
