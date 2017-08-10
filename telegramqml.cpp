@@ -92,8 +92,6 @@ public:
     QString tempPath;
     QString configPath;
     QUrl publicKeyFile;
-    //for the password/2FA authentication. Storing AccountPassword here did not work, the bytes got corrupted
-    //AccountPassword accountPassword;
     QString currentSalt;
 
     bool globalMute;
@@ -2807,7 +2805,6 @@ void TelegramQml::try_init()
 
     p->telegram = new Telegram(p->defaultHostAddress,p->defaultHostPort,p->defaultHostDcId,
                                p->appId, p->appHash, p->phoneNumber, p->configPath, pKeyFile);
-    p->tsettings = p->telegram->settings();
 
     connect( p->telegram, SIGNAL(authNeeded())                          , SLOT(authNeeded_slt())                           );
     connect( p->telegram, SIGNAL(authLoggedIn())                        , SLOT(authLoggedIn_slt())                         );
@@ -2975,6 +2972,8 @@ void TelegramQml::try_init()
     Q_EMIT telegramChanged();
 
     p->telegram->init();
+    p->tsettings = p->telegram->settings();
+    refreshSecretChats();
 }
 
 void TelegramQml::authNeeded_slt()
@@ -3529,6 +3528,7 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QLi
     Q_UNUSED(id)
     Q_UNUSED(sliceCount)
 
+    refreshSecretChats();
     Q_FOREACH( const User & u, users )
         insertUser(u);
     Q_FOREACH( const Chat & c, chats )
@@ -3556,7 +3556,6 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QLi
     }
 
     Q_EMIT dialogsChanged(false);
-    refreshSecretChats();
 }
 
 void TelegramQml::messagesGetHistory_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users)
