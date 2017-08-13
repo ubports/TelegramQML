@@ -2794,8 +2794,6 @@ void TelegramQml::try_init()
        !p->appId || p->appHash.isEmpty() )
         return;
 
-    qInfo() << "TelegramQml::try_init begin";
-
     removeFiles(tempPath());
     QDir().mkpath(tempPath());
 
@@ -2807,7 +2805,6 @@ void TelegramQml::try_init()
                                p->appId, p->appHash, p->phoneNumber, p->configPath, pKeyFile);
     p->tsettings = p->telegram->settings();
 
-    qInfo() << "Connecting all signals to Telegram API...";
     ASSERT(connect( p->telegram, &Telegram::authNeeded, this, &TelegramQml::authNeeded_slt));
     ASSERT(connect( p->telegram, &Telegram::authLoggedIn, this, &TelegramQml::authLoggedIn_slt));
     ASSERT(connect( p->telegram, &Telegram::authLogOutAnswer, this, &TelegramQml::authLogOut_slt));
@@ -2893,7 +2890,6 @@ void TelegramQml::try_init()
     Q_EMIT telegramChanged();
 
     p->telegram->init();
-    qInfo() << "TelegramQml::try_init end";
 
 }
 
@@ -2984,7 +2980,6 @@ void TelegramQml::authCheckPassword_slt(qint64 id, const AuthAuthorization& resu
 
 void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
 {
-    qInfo() << "TelegramQml::authCheckPhone_slt begin";
     p->checkphone_req_id = 0;
     QString phone = p->phoneCheckIds.take(id);
 
@@ -3011,7 +3006,6 @@ void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
     } else {
         Q_EMIT phoneChecked(phone, result);
     }
-    qInfo() << "TelegramQml::authCheckPhone_slt end";
 }
 
 void TelegramQml::authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
