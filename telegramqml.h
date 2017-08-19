@@ -327,7 +327,6 @@ public Q_SLOTS:
 
     qint32 sendMessage( qint64 dialogId, const QString & msg, int replyTo = 0 );
     bool sendMessageAsDocument( qint64 dialogId, const QString & msg );
-    void sendGeo(qint64 dialogId, qreal latitude, qreal longitude, int replyTo = 0);
     void forwardDocument(qint64 dialogId, DocumentObject *doc);
 
     void addContact(const QString &firstName, const QString &lastName, const QString &phoneNumber);

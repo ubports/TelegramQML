@@ -814,13 +814,9 @@ void TelegramQml::accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil) {
         peer.setChatId(peerId);
     else
         peer.setUserId(peerId);
-
-    if(peer.classType() == InputPeer::typeInputPeerForeign)
-    {
-        UserObject *user = p->users.value(peerId);
-        if(user)
-            peer.setAccessHash(user->accessHash());
-    }
+    UserObject *user = p->users.value(peerId);
+    if(user && user->accessHash())
+        peer.setAccessHash(user->accessHash());
 
     InputNotifyPeer inputNotifyPeer(InputNotifyPeer::typeInputNotifyPeer);
     inputNotifyPeer.setPeerInput(peer);
@@ -1562,30 +1558,21 @@ QList<qint64> TelegramQml::stickerSetDocuments(const QString &shortName) const
 InputUser TelegramQml::getInputUser(qint64 userId) const
 {
     UserObject *user = p->users.value(userId);
-    InputUser::InputUserClassType inputUserType;
+    InputUser::InputUserClassType inputUserType = InputUser::typeInputUserEmpty;
     InputUser inputUser;
-    if (!user) return inputUser;
+    if (!user)
+        return inputUser;
 
     switch (user->classType())
     {
-    case User::typeUserSelf:
-        inputUserType = InputUser::typeInputUserSelf;
-        break;
-    case User::typeUserContact:
+    case User::typeUser:
         inputUserType = InputUser::typeInputUserContact;
-        break;
-    case User::typeUserForeign:
-    case User::typeUserRequest:
-        inputUserType = InputUser::typeInputUserForeign;
-        break;
-    default:
-        inputUserType = InputUser::typeInputUserEmpty;
         break;
     }
 
     inputUser.setUserId(userId);
     inputUser.setClassType(inputUserType);
-    if (inputUserType == InputUser::typeInputUserForeign) {
+    if (user->accessHash()) {
         inputUser.setAccessHash(user->accessHash());
     }
     return inputUser;
@@ -1819,56 +1806,6 @@ bool TelegramQml::sendMessageAsDocument(qint64 dId, const QString &msg)
     return sendFile(dId, path, true);
 }
 
-void TelegramQml::sendGeo(qint64 dId, qreal latitude, qreal longitude, int replyTo)
-{
-    if( !p->telegram )
-        return;
-
-    DialogObject *dlg = p->dialogs.value(dId);
-
-    qint64 sendId;
-
-    Message message = newMessage(dId);
-
-    MessageMedia media = message.media();
-    media.setClassType(MessageMedia::typeMessageMediaGeo);
-
-    GeoPoint geoPoint = media.geo();
-    geoPoint.setLat(latitude);
-    geoPoint.setLongValue(longitude);
-    geoPoint.setClassType(GeoPoint::typeGeoPoint);
-
-    media.setGeo(geoPoint);
-    message.setMedia(media);
-
-    InputGeoPoint input(InputGeoPoint::typeInputGeoPoint);
-    input.setLat(latitude);
-    input.setLongValue(longitude);
-
-    if(replyTo)
-        message.setReplyToMsgId(replyTo);
-
-    p->msg_send_random_id = generateRandomId();
-    if(dlg && dlg->encrypted())
-    {
-        return;
-    }
-    else
-    {
-        InputPeer peer = getInputPeer(dId);
-        sendId = p->telegram->messagesSendGeoPoint(peer, p->msg_send_random_id, input, replyTo);
-    }
-
-    insertMessage(message, (dlg && dlg->encrypted()), false, true);
-
-    MessageObject *msgObj = p->messages.value(message.id());
-    msgObj->setSent(false);
-
-    p->pend_messages[sendId] = msgObj;
-
-    timerUpdateDialogs();
-}
-
 void TelegramQml::forwardDocument(qint64 dialogId, DocumentObject *doc)
 {
     if(!p->telegram)
@@ -1971,14 +1908,8 @@ void TelegramQml::messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLi
     InputUser::InputUserClassType inputType = InputUser::typeInputUserEmpty;
     switch(userObj->classType())
     {
-    case User::typeUserContact:
+    case User::typeUser:
         inputType = InputUser::typeInputUserContact;
-        break;
-    case User::typeUserForeign:
-        inputType = InputUser::typeInputUserForeign;
-        break;
-    case User::typeUserSelf:
-        inputType = InputUser::typeInputUserSelf;
         break;
     }
 
@@ -2000,14 +1931,8 @@ qint64 TelegramQml::messagesDeleteChatUser(qint64 chatId, qint64 userId)
     InputUser::InputUserClassType inputType = InputUser::typeInputUserEmpty;
     switch(userObj->classType())
     {
-    case User::typeUserContact:
+    case User::typeUser:
         inputType = InputUser::typeInputUserContact;
-        break;
-    case User::typeUserForeign:
-        inputType = InputUser::typeInputUserForeign;
-        break;
-    case User::typeUserSelf:
-        inputType = InputUser::typeInputUserSelf;
         break;
     }
 
@@ -3627,7 +3552,7 @@ void TelegramQml::messagesEncryptedChatRequested_slt(qint32 chatId, qint32 date,
 
     if(!p->users.contains(creatorId))
     {
-        User u(User::typeUserForeign);
+        User u = User();
         u.setId(creatorId);
         u.setAccessHash(creatorAccessHash);
 
@@ -5347,17 +5272,8 @@ InputPeer::InputPeerClassType TelegramQml::getInputPeerType(qint64 pid)
         UserObject *user = p->users.value(pid);
         switch(user->classType())
         {
-        case User::typeUserContact:
-            res = InputPeer::typeInputPeerContact;
-            break;
-        case User::typeUserForeign:
-            res = InputPeer::typeInputPeerForeign;
-            break;
-        case User::typeUserSelf:
-            res = InputPeer::typeInputPeerSelf;
-            break;
-        case User::typeUserRequest:
-            res = InputPeer::typeInputPeerForeign;
+            case User::typeUser:
+                res = InputPeer::typeInputPeerContact;
             break;
         }
     }
