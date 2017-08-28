@@ -48,6 +48,7 @@
 #include <QTimer>
 #include <QAudioDecoder>
 #include <QMediaMetaData>
+#include <QCryptographicHash>
 
 #ifdef Q_OS_WIN
 #define FILES_PRE_STR QString("file:///")
@@ -91,7 +92,7 @@ public:
     QString tempPath;
     QString configPath;
     QUrl publicKeyFile;
-    AccountPassword accountPassword;
+    QString currentSalt;
 
     bool globalMute;
     bool online;
@@ -1724,8 +1725,9 @@ void TelegramQml::authCheckPassword(const QString &pass)
     if( !p->telegram )
         return;
 
-    QByteArray salt = p->accountPassword.currentSalt();
-    p->telegram->authCheckPassword(salt+pass.toUtf8()+salt);
+    QByteArray salt = QByteArray::fromHex(p->currentSalt.toUtf8());
+    QByteArray passData = salt + pass.toUtf8() + salt;
+    p->telegram->authCheckPassword(QCryptographicHash::hash(passData, QCryptographicHash::Sha256));
 }
 
 void TelegramQml::accountUpdateProfile(const QString &firstName, const QString &lastName)
@@ -2803,7 +2805,6 @@ void TelegramQml::try_init()
 
     p->telegram = new Telegram(p->defaultHostAddress,p->defaultHostPort,p->defaultHostDcId,
                                p->appId, p->appHash, p->phoneNumber, p->configPath, pKeyFile);
-    p->tsettings = p->telegram->settings();
 
     connect( p->telegram, SIGNAL(authNeeded())                          , SLOT(authNeeded_slt())                           );
     connect( p->telegram, SIGNAL(authLoggedIn())                        , SLOT(authLoggedIn_slt())                         );
@@ -2971,6 +2972,8 @@ void TelegramQml::try_init()
     Q_EMIT telegramChanged();
 
     p->telegram->init();
+    p->tsettings = p->telegram->settings();
+    refreshSecretChats();
 }
 
 void TelegramQml::authNeeded_slt()
@@ -3106,7 +3109,9 @@ void TelegramQml::reconnect()
 void TelegramQml::accountGetPassword_slt(qint64 id, const AccountPassword &password)
 {
     Q_UNUSED(id)
-    p->accountPassword = password;
+    //As a workaround for the binary corruption of the AccountPassword we store it here as a string, thereby guaranteeing deep copy
+    //p->accountPassword = password;
+    p->currentSalt = QString(password.currentSalt().toHex());
     if(password.classType() == AccountPassword::typeAccountPassword)
     {
         Q_EMIT authPasswordNeeded();
@@ -3154,7 +3159,7 @@ void TelegramQml::authSignInError_slt(qint64 id, qint32 errorCode, QString error
         Q_EMIT authNeededChanged();
         if(errorCode == 401 || errorText == "SESSION_PASSWORD_NEEDED")
         {
-            Q_EMIT authPasswordNeeded();
+            p->telegram->accountGetPassword();
         }
         else
         {
@@ -3189,6 +3194,11 @@ void TelegramQml::error_slt(qint64 id, qint32 errorCode, QString errorText, QStr
 
     if(errorText.contains("PHONE_PASSWORD_PROTECTED"))
         Q_EMIT authPasswordProtectedError();
+
+    if(errorText.contains("PEER_ID_INVALID") &&
+       functionName.contains("messagesDeleteHistory")) {
+        messagesDeleteHistory_slt(id, 0, 0, 0);
+    }
 
     qDebug() << __FUNCTION__ << errorCode << errorText << functionName;
 
@@ -3518,6 +3528,7 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QLi
     Q_UNUSED(id)
     Q_UNUSED(sliceCount)
 
+    refreshSecretChats();
     Q_FOREACH( const User & u, users )
         insertUser(u);
     Q_FOREACH( const Chat & c, chats )
@@ -3545,7 +3556,6 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QLi
     }
 
     Q_EMIT dialogsChanged(false);
-    refreshSecretChats();
 }
 
 void TelegramQml::messagesGetHistory_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users)
