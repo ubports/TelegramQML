@@ -3040,7 +3040,7 @@ void TelegramQml::error_slt(qint64 id, qint32 errorCode, QString errorText, QStr
 
     if(errorText.contains("PEER_ID_INVALID") &&
        functionName.contains("messagesDeleteHistory")) {
-        messagesDeleteHistory_slt(id, 0, 0, 0);
+        messagesDeleteHistory_slt(id, MessagesAffectedHistory());
     }
 
     qDebug() << __FUNCTION__ << errorCode << errorText << functionName;
