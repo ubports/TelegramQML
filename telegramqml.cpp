@@ -794,8 +794,8 @@ void TelegramQml::mute(qint64 peerId) {
     if(!p->globalMute)
         return;
 
-    qint32 muteUntil = QDateTime::currentDateTime().addYears(1).toTime_t();
-    accountUpdateNotifySettings(peerId, muteUntil);
+    //Mute until (time from now during which the contact is muted in seconds): set to 50 years to reach a rather permanent mute :P
+    accountUpdateNotifySettings(peerId, 1576800000);
 }
 
 void TelegramQml::unmute(qint64 peerId) {
@@ -805,6 +805,7 @@ void TelegramQml::unmute(qint64 peerId) {
     if(!p->globalMute)
         return;
 
+    //Mute until (time from now during which the contact is muted in seconds): set to 0 to unmute
     accountUpdateNotifySettings(peerId, 0);
 }
 
