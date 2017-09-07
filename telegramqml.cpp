@@ -2302,7 +2302,7 @@ qint64 TelegramQml::sendFile(qint64 dId, const QString &fpath, bool forceDocumen
         QImageWriter writer(thumbnail);
         writer.write(reader.read());
 
-        fileId = p->telegram->messagesSendDocument(peer, p->msg_send_random_id, file, thumbnail, true);
+        fileId = p->telegram->messagesSendDocument(peer, p->msg_send_random_id, file, thumbnail, QString::null, true);
 
         MessageMedia media = message.media();
         media.setClassType(MessageMedia::typeMessageMediaDocument);
