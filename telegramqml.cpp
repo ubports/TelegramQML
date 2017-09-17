@@ -1776,7 +1776,9 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
     else
     {
         InputPeer peer = getInputPeer(dId);
-        sendId = p->telegram->messagesSendMessage(peer, p->msg_send_random_id, msg, replyTo);
+        auto entities = QList<MessageEntity>();
+
+        sendId = p->telegram->messagesSendMessage(peer, replyTo, msg, p->msg_send_random_id, ReplyMarkup(), entities);
     }
 
     insertMessage(message, (dlg && dlg->encrypted()), false, true);
@@ -2103,7 +2105,7 @@ void TelegramQml::installStickerSet(const QString &shortName)
     InputStickerSet set(InputStickerSet::typeInputStickerSetShortName);
     set.setShortName(shortName);
 
-    qint64 msgId = p->telegram->messagesInstallStickerSet(set);
+    qint64 msgId = p->telegram->messagesInstallStickerSet(set, false);
     p->pending_stickers_install[msgId] = shortName;
 }
 
