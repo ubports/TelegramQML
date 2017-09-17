@@ -509,7 +509,7 @@ private Q_SLOTS:
     void usersGetFullUser_slt(qint64 id, const UserFull &result);
     void usersGetUsers_slt(qint64 id, const QList<User> &users);
 
-    void messagesSendMessage_slt(qint64 id, const MessagesSentMessage &result);
+    void messagesSendMessage_slt(qint64 id, const UpdatesType &result);
     void messagesForwardMessage_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardMessages_slt(qint64 id, const UpdatesType &updates);
     void messagesDeleteMessages_slt(qint64 id, const MessagesAffectedMessages &deletedMessages);

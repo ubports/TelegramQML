@@ -120,20 +120,15 @@ void DatabaseCore::insertChat(const DbChat &dchat)
     begin();
     const Chat &chat = dchat.chat;
     QSqlQuery query(p->db);
-    query.prepare("INSERT OR REPLACE INTO Chats (id, participantsCount, version, venue, title, address, date, geo, accessHash, checkedIn, left, type, photoId, photoBigLocalId, photoBigSecret, photoBigDcId, photoBigVolumeId, photoSmallLocalId, photoSmallSecret, photoSmallDcId, photoSmallVolumeId) "
-                  "VALUES (:id, :participantsCount, :version, :venue, :title, :address, :date, :geo, :accessHash, :checkedIn, :left, :type, :photoId, :photoBigLocalId, :photoBigSecret, :photoBigDcId, :photoBigVolumeId, :photoSmallLocalId, :photoSmallSecret, :photoSmallDcId, :photoSmallVolumeId);");
+    query.prepare("INSERT OR REPLACE INTO Chats (id, participantsCount, version, title, date, geo, left, type, photoId, photoBigLocalId, photoBigSecret, photoBigDcId, photoBigVolumeId, photoSmallLocalId, photoSmallSecret, photoSmallDcId, photoSmallVolumeId) "
+                  "VALUES (:id, :participantsCount, :version, :title, :date, :geo, :left, :type, :photoId, :photoBigLocalId, :photoBigSecret, :photoBigDcId, :photoBigVolumeId, :photoSmallLocalId, :photoSmallSecret, :photoSmallDcId, :photoSmallVolumeId);");
 
     query.bindValue(":id",chat.id() );
-    query.bindValue(":accessHash",chat.accessHash() );
     query.bindValue(":participantsCount",chat.participantsCount() );
     query.bindValue(":version",chat.version() );
-    query.bindValue(":venue",chat.venue() );
     query.bindValue(":title",chat.title() );
-    query.bindValue(":address",chat.address() );
-    query.bindValue(":address",chat.address() );
     query.bindValue(":date",chat.date() );
     query.bindValue(":geo",0 );
-    query.bindValue(":checkedIn",chat.checkedIn() );
     query.bindValue(":left",chat.left() );
     query.bindValue(":type",chat.classType() );
 
@@ -206,8 +201,8 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     begin();
     const Message &message = dmessage.message;
     QSqlQuery query(p->db);
-    query.prepare("INSERT OR REPLACE INTO Messages (id, toId, toPeerType, unread, fromId, out, date, fwdDate, fwdFromId, replyToMsgId, message, actionAddress, actionUserId, actionPhoto, actionTitle, actionUsers, actionType, mediaAudio, mediaLastName, mediaFirstName, mediaPhoneNumber, mediaDocument, mediaGeo, mediaPhoto, mediaUserId, mediaVideo, mediaType) "
-                  "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionAddress, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
+    query.prepare("INSERT OR REPLACE INTO Messages (id, toId, toPeerType, unread, fromId, out, date, fwdDate, fwdFromId, replyToMsgId, message, actionUserId, actionPhoto, actionTitle, actionUsers, actionType, mediaAudio, mediaLastName, mediaFirstName, mediaPhoneNumber, mediaDocument, mediaGeo, mediaPhoto, mediaUserId, mediaVideo, mediaType) "
+                  "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
 
     query.bindValue(":id",message.id() );
     query.bindValue(":toId",message.toId().classType()==Peer::typePeerChat?message.toId().chatId():message.toId().userId() );
@@ -222,7 +217,6 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":message", ENCRYPTER->encrypt(message.message(), encrypted) );
 
     const MessageAction &action = message.action();
-    query.bindValue(":actionAddress",action.address() );
     query.bindValue(":actionUserId",action.userId() );
     query.bindValue(":actionPhoto",action.photo().id() );
     query.bindValue(":actionTitle",action.title() );
@@ -350,7 +344,6 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         const QSqlRecord &record = query.record();
 
         MessageAction action( static_cast<MessageAction::MessageActionClassType>(record.value("actionType").toLongLong()) );
-        action.setAddress( record.value("actionAddress").toString() );
         action.setUserId( record.value("actionUserId").toLongLong() );
         action.setTitle( record.value("actionTitle").toString() );
         action.setUsers( stringToUsers(record.value("actionUsers").toString()) );
@@ -626,15 +619,11 @@ void DatabaseCore::readChats()
 
         Chat chat(Chat::typeChatEmpty);
         chat.setId( record.value("id").toLongLong() );
-        chat.setAccessHash( record.value("accessHash").toLongLong() );
         chat.setVersion( record.value("version").toLongLong() );
-        chat.setVenue( record.value("venue").toString() );
         chat.setTitle( record.value("title").toString() );
-        chat.setAddress( record.value("address").toString() );
         chat.setParticipantsCount( record.value("participantsCount").toLongLong() );
         chat.setDate( record.value("date").toLongLong() );
         chat.setParticipantsCount( record.value("participantsCount").toLongLong() );
-        chat.setCheckedIn( record.value("checkedIn").toBool() );
         chat.setLeft( record.value("left").toBool() );
         chat.setClassType( static_cast<Chat::ChatClassType>(record.value("type").toLongLong()) );
         chat.setPhoto(photo);
@@ -926,7 +915,7 @@ void DatabaseCore::insertAudio(const Audio &audio)
     begin();
     QSqlQuery query(p->db);
     query.prepare("INSERT OR REPLACE INTO Audios (id, dcId, mimeType, duration, date, size, accessHash, userId, type) "
-                  "VALUES (:id, :dcId, :mimeType, :duration, :date, :size, :accessHash, :userId, :type);");
+                  "VALUES (:id, :dcId, :mimeType, :duration, :date, :size, :accessHash, :type);");
 
     query.bindValue(":id", audio.id());
     query.bindValue(":dcId", audio.dcId());
@@ -935,7 +924,6 @@ void DatabaseCore::insertAudio(const Audio &audio)
     query.bindValue(":date", audio.date());
     query.bindValue(":size", audio.size());
     query.bindValue(":accessHash", audio.accessHash());
-    query.bindValue(":userId", audio.userId());
     query.bindValue(":type", audio.classType());
 
     bool res = query.exec();
@@ -954,7 +942,7 @@ void DatabaseCore::insertVideo(const Video &video)
     begin();
     QSqlQuery query(p->db);
     query.prepare("INSERT OR REPLACE INTO Videos (id, dcId, caption, mimeType, date, duration, h, size, accessHash, userId, w, type) "
-                  "VALUES (:id, :dcId, :caption, :mimeType, :date, :duration, :h, :size, :accessHash, :userId, :w, :type);");
+                  "VALUES (:id, :dcId, :caption, :mimeType, :date, :duration, :h, :size, :accessHash, :w, :type);");
 
     query.bindValue(":id", video.id());
     query.bindValue(":dcId", video.dcId());
@@ -966,7 +954,6 @@ void DatabaseCore::insertVideo(const Video &video)
     query.bindValue(":w", video.w());
     query.bindValue(":size", video.size());
     query.bindValue(":accessHash", video.accessHash());
-    query.bindValue(":userId", video.userId());
     query.bindValue(":type", video.classType());
 
     bool res = query.exec();
@@ -1044,14 +1031,13 @@ void DatabaseCore::insertPhoto(const Photo &photo)
 
     begin();
     QSqlQuery query(p->db);
-    query.prepare("INSERT OR REPLACE INTO Photos (id, caption, date, accessHash, userId) "
-                  "VALUES (:id, :caption, :date, :accessHash, :userId);");
+    query.prepare("INSERT OR REPLACE INTO Photos (id, caption, date, accessHash) "
+                  "VALUES (:id, :caption, :date, :accessHash);");
 
     query.bindValue(":id", photo.id());
     query.bindValue(":caption", QString());
     query.bindValue(":date", photo.date());
     query.bindValue(":accessHash", photo.accessHash());
-    query.bindValue(":userId", photo.userId());
 
     bool res = query.exec();
     if(!res)
@@ -1122,7 +1108,6 @@ Audio DatabaseCore::readAudio(qint64 id)
     audio.setDate( record.value("date").toLongLong() );
     audio.setSize( record.value("size").toLongLong() );
     audio.setAccessHash( record.value("accessHash").toLongLong() );
-    audio.setUserId( record.value("userId").toLongLong() );
     audio.setClassType( static_cast<Audio::AudioClassType>(record.value("type").toLongLong()) );
 
     return audio;
@@ -1160,7 +1145,6 @@ Video DatabaseCore::readVideo(qint64 id)
     video.setW( record.value("w").toLongLong() );
     video.setH( record.value("h").toLongLong() );
     video.setAccessHash( record.value("accessHash").toLongLong() );
-    video.setUserId( record.value("userId").toLongLong() );
     video.setClassType( static_cast<Video::VideoClassType>(record.value("type").toLongLong()) );
 
     const QList<PhotoSize> &sizes = readPhotoSize(video.id());
@@ -1269,7 +1253,6 @@ Photo DatabaseCore::readPhoto(qint64 id)
 //    photo.setCaption( record.value("caption").toString() );
     photo.setDate( record.value("date").toLongLong() );
     photo.setAccessHash( record.value("accessHash").toLongLong() );
-    photo.setUserId( record.value("userId").toLongLong() );
     photo.setSizes( readPhotoSize(id) );
     photo.setClassType(Photo::typePhoto);
 

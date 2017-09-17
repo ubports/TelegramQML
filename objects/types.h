@@ -1948,7 +1948,6 @@ public:
         _date = another.date();
         _size = another.size();
         _accessHash = another.accessHash();
-        _userId = another.userId();
         _classType = another.classType();
 
     }
@@ -2079,8 +2078,6 @@ public:
         Q_EMIT sizeChanged();
         _accessHash = another.accessHash();
         Q_EMIT accessHashChanged();
-        _userId = another.userId();
-        Q_EMIT userIdChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
 
@@ -2460,7 +2457,6 @@ public:
         _h = another.h();
         _size = another.size();
         _accessHash = another.accessHash();
-        _userId = another.userId();
         _w = another.w();
         _classType = another.classType();
 
@@ -2620,8 +2616,6 @@ public:
         Q_EMIT sizeChanged();
         _accessHash = another.accessHash();
         Q_EMIT accessHashChanged();
-        _userId = another.userId();
-        Q_EMIT userIdChanged();
         _w = another.w();
         Q_EMIT wChanged();
         _classType = another.classType();
@@ -2677,7 +2671,6 @@ public:
         _date = another.date();
         _sizes = new PhotoSizeList(another.sizes(), this);
         _accessHash = another.accessHash();
-        _userId = another.userId();
         _classType = another.classType();
 
     }
@@ -2780,8 +2773,6 @@ public:
         Q_EMIT sizesChanged();
         _accessHash = another.accessHash();
         Q_EMIT accessHashChanged();
-        _userId = another.userId();
-        Q_EMIT userIdChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
 
@@ -3715,7 +3706,6 @@ public:
         _title = another.title();
         _date = another.date();
         _photo = new ChatPhotoObject(another.photo(), this);
-        _accessHash = another.accessHash();
         _left = another.left();
         _classType = another.classType();
 
@@ -3847,8 +3837,6 @@ public:
         Q_EMIT dateChanged();
         *_photo = another.photo();
         Q_EMIT photoChanged();
-        _accessHash = another.accessHash();
-        Q_EMIT accessHashChanged();
         _left = another.left();
         Q_EMIT leftChanged();
         _classType = another.classType();

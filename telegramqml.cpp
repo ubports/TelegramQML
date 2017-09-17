@@ -821,7 +821,7 @@ void TelegramQml::accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil) {
         peer.setAccessHash(user->accessHash());
 
     InputNotifyPeer inputNotifyPeer(InputNotifyPeer::typeInputNotifyPeer);
-    inputNotifyPeer.setPeerInput(peer);
+    inputNotifyPeer.setPeer(peer);
 
     InputPeerNotifySettings settings;
     settings.setMuteUntil(muteUntil);
@@ -1568,7 +1568,7 @@ InputUser TelegramQml::getInputUser(qint64 userId) const
     switch (user->classType())
     {
     case User::typeUser:
-        inputUserType = InputUser::typeInputUserContact;
+        inputUserType = InputUser::typeInputUser;
         break;
     }
 
@@ -1589,12 +1589,9 @@ InputPeer TelegramQml::getInputPeer(qint64 peerId)
     else
         peer.setUserId(peerId);
 
-    if(peer.classType() == InputPeer::typeInputPeerForeign)
-    {
-        UserObject *user = p->users.value(peerId);
-        if(user)
-            peer.setAccessHash(user->accessHash());
-    }
+    UserObject *user = p->users.value(peerId);
+    if(user)
+        peer.setAccessHash(user->accessHash());
 
     return peer;
 }
@@ -1890,7 +1887,7 @@ void TelegramQml::messagesCreateChat(const QList<int> &users, const QString &top
     QList<InputUser> inputUsers;
     Q_FOREACH( qint32 user, users )
     {
-        InputUser input(InputUser::typeInputUserContact);
+        InputUser input(InputUser::typeInputUser);
         input.setUserId(user);
 
         inputUsers << input;
@@ -1912,7 +1909,7 @@ void TelegramQml::messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLi
     switch(userObj->classType())
     {
     case User::typeUser:
-        inputType = InputUser::typeInputUserContact;
+        inputType = InputUser::typeInputUser;
         break;
     }
 
@@ -1935,7 +1932,7 @@ qint64 TelegramQml::messagesDeleteChatUser(qint64 chatId, qint64 userId)
     switch(userObj->classType())
     {
     case User::typeUser:
-        inputType = InputUser::typeInputUserContact;
+        inputType = InputUser::typeInputUser;
         break;
     }
 
@@ -2061,7 +2058,7 @@ void TelegramQml::messagesCreateEncryptedChat(qint64 userId)
     if(!user)
         return;
 
-    InputUser input(InputUser::typeInputUserContact);
+    InputUser input(InputUser::typeInputUser);
     input.setUserId(user->id());
     input.setAccessHash(user->accessHash());
 
@@ -3188,7 +3185,7 @@ void TelegramQml::usersGetUsers_slt(qint64 id, const QList<User> &users)
         insertUser(user);
 }
 
-void TelegramQml::messagesSendMessage_slt(qint64 id, const MessagesSentMessage& result)
+void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
 {
 
     if( !p->pend_messages.contains(id) )
@@ -3680,7 +3677,6 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
         photo.setAccessHash(encryptedFile.accessHash());
         photo.setId(encryptedFile.id());
         photo.setDate(date);
-        photo.setUserId(me());
         photo.setSizes( QList<PhotoSize>()<<psize );
 
         media.setPhoto(photo);
@@ -3761,10 +3757,6 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
 
     p->installedStickerSets.clear();
 
-    const QList<StickerPack> &packs = stickers.packs();
-    Q_FOREACH(const StickerPack &pack, packs)
-        insertStickerPack(pack);
-
     const QList<StickerSet> &sets = stickers.sets();
     Q_FOREACH(const StickerSet &set, sets)
     {
@@ -3773,17 +3765,6 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
         p->stickerShortIds[set.shortName()] = set.id();
     }
 
-    const QList<Document> &documents = stickers.documents();
-    Q_FOREACH(const Document &doc, documents)
-    {
-        insertDocument(doc);
-        p->stickers << doc.id();
-
-        const QList<DocumentAttribute> &attrs = doc.attributes();
-        Q_FOREACH(const DocumentAttribute &attr, attrs)
-            if(attr.classType() == DocumentAttribute::typeDocumentAttributeSticker)
-                p->stickersMap[attr.stickerset().id()].insert(doc.id());
-    }
 
     Q_EMIT installedStickersChanged();
 }
@@ -4807,7 +4788,6 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             Photo photo(Photo::typePhoto);
             photo.setId(attachment.id());
             photo.setAccessHash(attachment.accessHash());
-            photo.setUserId(msg.fromId());
             photo.setDate(msg.date());
             photo.setSizes(QList<PhotoSize>()<<photoSizes);
 
@@ -4825,7 +4805,6 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             video.setDcId(attachment.dcId());
             video.setAccessHash(attachment.accessHash());
             video.setDate(msg.date());
-            video.setUserId(msg.fromId());
             video.setSize(dmedia.size());
             video.setH(dmedia.h());
             video.setW(dmedia.w());
@@ -4853,7 +4832,6 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
             audio.setDcId(attachment.dcId());
             audio.setAccessHash(attachment.accessHash());
             audio.setDate(msg.date());
-            audio.setUserId(msg.fromId());
             audio.setSize(dmedia.size());
             audio.setDuration(dmedia.duration());
 
@@ -5282,15 +5260,13 @@ InputPeer::InputPeerClassType TelegramQml::getInputPeerType(qint64 pid)
         switch(user->classType())
         {
             case User::typeUser:
-                res = InputPeer::typeInputPeerContact;
+                res = InputPeer::typeInputPeerUser;
             break;
         }
     }
     else
     if(p->chats.contains(pid))
         res = InputPeer::typeInputPeerChat;
-    else
-        res = InputPeer::typeInputPeerEmpty;
 
     return res;
 }
