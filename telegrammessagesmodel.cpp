@@ -209,7 +209,7 @@ void TelegramMessagesModel::refresh()
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
     if(p->dialog->peer()->userId() != NewsLetterDialog::cutegramId())
-        tgObject->messagesGetHistory(peer, 0, p->maxId, p->stepCount );
+        tgObject->messagesGetHistory(peer, 0, p->maxId, p->stepCount, 0, 0 );
 
     p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
 }
@@ -248,7 +248,7 @@ void TelegramMessagesModel::loadMore(bool force)
     {
         if (p->telegram->connected())
         {
-            tgObject->messagesGetHistory(peer, p->load_count, p->maxId, p->load_limit );
+            tgObject->messagesGetHistory(peer, 0, p->load_count, p->maxId, p->load_limit, 0, 0 );
             p->refreshing = true;
         }
     }

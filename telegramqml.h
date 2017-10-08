@@ -332,7 +332,7 @@ public Q_SLOTS:
     void addContact(const QString &firstName, const QString &lastName, const QString &phoneNumber);
     void addContacts(const QVariantList &vcontacts);
 
-    void forwardMessages( QList<int> msgIds, qint64 peerId );
+    void forwardMessages(QList<int> msgIds, qint64 toPeerId );
     void deleteMessages(QList<int> msgIds );
 
     void deleteCutegramDialog();
@@ -504,7 +504,6 @@ private Q_SLOTS:
     void contactsBlock_slt(qint64 id, bool ok);
     void contactsUnblock_slt(qint64 id, bool ok);
     void contactsImportContacts_slt(qint64 id, const ContactsImportedContacts &result);
-    void contactsFound_slt(qint64 id, const QList<ContactFound> &founds, const QList<User> &users);
     void contactsGetContacts_slt(qint64 id, const ContactsContacts &result);
     void usersGetFullUser_slt(qint64 id, const UserFull &result);
     void usersGetUsers_slt(qint64 id, const QList<User> &users);
@@ -527,7 +526,7 @@ private Q_SLOTS:
     void messagesForwardDocument_slt(qint64 id, const UpdatesType &updates);
     void messagesGetDialogs_slt(qint64 id, const MessagesDialogs &result);
     void messagesGetHistory_slt(qint64 id, const MessagesMessages &result);
-    void messagesReadHistory_slt(qint64 id, const MessagesAffectedHistory &result);
+    void messagesReadHistory_slt(qint64 id, const MessagesAffectedMessages &result);
     void messagesReadEncryptedHistory_slt(qint64 id, bool ok);
     void messagesDeleteHistory_slt(qint64 id, const MessagesAffectedHistory &result);
 

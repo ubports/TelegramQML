@@ -5,6 +5,7 @@
 #include "databaseabstractencryptor.h"
 
 #include <QObject>
+#include <QSqlDatabase>
 #include <telegram/types/types.h>
 
 class TELEGRAMQMLSHARED_EXPORT DbChat { public: DbChat(): chat(Chat::typeChatEmpty){} Chat chat; };
@@ -21,7 +22,6 @@ public:
     QString decrypt(const QVariant &data) { return data.toString(); }
 };
 
-class DatabaseCorePrivate;
 class TELEGRAMQMLSHARED_EXPORT DatabaseCore : public QObject
 {
     Q_OBJECT
@@ -69,6 +69,9 @@ Q_SIGNALS:
     void mediaKeyFounded(qint64 mediaId, const QByteArray &key, const QByteArray &iv);
     void valueChanged(const QString &value);
 
+protected:
+    void timerEvent(QTimerEvent *e);
+
 private:
     void readDialogs();
     void readUsers();
@@ -104,11 +107,17 @@ private:
     void begin();
     void commit();
 
-protected:
-    void timerEvent(QTimerEvent *e);
+    //from DatabaseCorePrivate
+    QString connectionName;
+    QSqlDatabase db;
+    QString path;
+    QString phoneNumber;
+    QString configPath;
+    DatabaseAbstractEncryptor *default_encrypter;
+    DatabaseAbstractEncryptor *internal_encrypter;
+    QHash<QString,QString> general;
+    int commit_timer;
 
-private:
-    DatabaseCorePrivate *p;
 };
 
 Q_DECLARE_METATYPE(DbUser)

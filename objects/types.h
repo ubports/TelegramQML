@@ -1668,7 +1668,6 @@ public:
         _participants = new ChatParticipantList(another.participants(), this);
         _chatId = another.chatId();
         _version = another.version();
-        _adminId = another.adminId();
         _classType = another.classType();
 
     }
@@ -1745,8 +1744,6 @@ public:
         Q_EMIT chatIdChanged();
         _version = another.version();
         Q_EMIT versionChanged();
-        _adminId = another.adminId();
-        Q_EMIT adminIdChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
 
@@ -5055,7 +5052,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(qint32 date READ date WRITE setDate NOTIFY dateChanged)
     Q_PROPERTY(MessageMediaObject* media READ media WRITE setMedia NOTIFY mediaChanged)
     Q_PROPERTY(qint32 fwdDate READ fwdDate WRITE setFwdDate NOTIFY fwdDateChanged)
-    Q_PROPERTY(qint32 fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
+    Q_PROPERTY(PeerObject* fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
     Q_PROPERTY(qint32 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
@@ -5075,7 +5072,7 @@ public:
         _date = another.date();
         _media = new MessageMediaObject(another.media(), this);
         _fwdDate = another.fwdDate();
-        _fwdFromId = another.fwdFromId();
+        _fwdFromId = new PeerObject(another.fwdFromId(), this);
         _replyToMsgId = another.replyToMsgId();
         _message = another.message();
         _classType = another.classType();
@@ -5233,11 +5230,11 @@ public:
         Q_EMIT changed();
     }
 
-    qint32 fwdFromId() const {
+    PeerObject* fwdFromId() const {
         return _fwdFromId;
     }
 
-    void setFwdFromId(qint32 value) {
+    void setFwdFromId(PeerObject* value) {
         if( value == _fwdFromId )
             return;
         _fwdFromId = value;
@@ -5303,7 +5300,7 @@ public:
         Q_EMIT mediaChanged();
         _fwdDate = another.fwdDate();
         Q_EMIT fwdDateChanged();
-        _fwdFromId = another.fwdFromId();
+        *_fwdFromId = another.fwdFromId();
         Q_EMIT fwdFromIdChanged();
         _replyToMsgId = another.replyToMsgId();
         Q_EMIT replyToMsgIdChanged();
@@ -5346,7 +5343,7 @@ private:
     qint32 _date;
     MessageMediaObject* _media;
     qint32 _fwdDate;
-    qint32 _fwdFromId;
+    PeerObject* _fwdFromId;
     qint32 _replyToMsgId;
     QString _message;
     quint32 _classType;

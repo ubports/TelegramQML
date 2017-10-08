@@ -12,38 +12,21 @@
 #include <QDir>
 #include <QUuid>
 
-#define ENCRYPTER (p->encrypter?p->encrypter:p->default_encrypter)
-
-class DatabaseCorePrivate
-{
-public:
-    QString connectionName;
-    QSqlDatabase db;
-    QString path;
-    QString phoneNumber;
-    QString configPath;
-
-    DatabaseAbstractEncryptor *default_encrypter;
-    DatabaseAbstractEncryptor *encrypter;
-
-    QHash<QString,QString> general;
-    int commit_timer;
-};
+#define ENCRYPTER (internal_encrypter ? internal_encrypter : default_encrypter)
 
 DatabaseCore::DatabaseCore(const QString &path, const QString &configPath, const QString &phoneNumber, QObject *parent) :
     QObject(parent)
 {
-    p = new DatabaseCorePrivate;
-    p->path = path;
-    p->configPath = configPath;
-    p->commit_timer = 0;
-    p->phoneNumber = phoneNumber;
-    p->default_encrypter = new DatabaseNormalEncrypter();
-    p->encrypter = 0;
-    p->connectionName = DATABASE_DB_CONNECTION + p->phoneNumber + QUuid::createUuid().toString();
+    this->path = path;
+    this->configPath = configPath;
+    this->commit_timer = 0;
+    this->phoneNumber = phoneNumber;
+    this->default_encrypter = new DatabaseNormalEncrypter();
+    this->internal_encrypter = 0;
+    this->connectionName = DATABASE_DB_CONNECTION + phoneNumber + QUuid::createUuid().toString();
 
-    p->db = QSqlDatabase::addDatabase("QSQLITE",p->connectionName);
-    p->db.setDatabaseName(p->path);
+    this->db = QSqlDatabase::addDatabase("QSQLITE",connectionName);
+    this->db.setDatabaseName(this->path);
 
     reconnect();
 
@@ -57,24 +40,24 @@ DatabaseCore::DatabaseCore(const QString &path, const QString &configPath, const
 
 void DatabaseCore::setEncrypter(DatabaseAbstractEncryptor *encrypter)
 {
-    p->encrypter = encrypter;
+    internal_encrypter = encrypter;
 }
 
 DatabaseAbstractEncryptor *DatabaseCore::encrypter() const
 {
-    return p->encrypter;
+    return internal_encrypter;
 }
 
 void DatabaseCore::disconnect()
 {
-    p->db.close();
+    db.close();
 }
 
 void DatabaseCore::insertUser(const DbUser &duser)
 {
     begin();
     const User &user = duser.user;
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Users (id, accessHash, inactive, phone, firstName, lastName, username, type, photoId, photoBigLocalId, photoBigSecret, photoBigDcId, photoBigVolumeId, photoSmallLocalId, photoSmallSecret, photoSmallDcId, photoSmallVolumeId, statusWasOnline, statusExpires, statusType) "
                   "VALUES (:id, :accessHash, :inactive, :phone, :firstName, :lastName, :username, :type, :photoId, :photoBigLocalId, :photoBigSecret, :photoBigDcId, :photoBigVolumeId, :photoSmallLocalId, :photoSmallSecret, :photoSmallDcId, :photoSmallVolumeId, :statusWasOnline, :statusExpires, :statusType);");
 
@@ -119,7 +102,7 @@ void DatabaseCore::insertChat(const DbChat &dchat)
 {
     begin();
     const Chat &chat = dchat.chat;
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Chats (id, participantsCount, version, title, date, geo, left, type, photoId, photoBigLocalId, photoBigSecret, photoBigDcId, photoBigVolumeId, photoSmallLocalId, photoSmallSecret, photoSmallDcId, photoSmallVolumeId) "
                   "VALUES (:id, :participantsCount, :version, :title, :date, :geo, :left, :type, :photoId, :photoBigLocalId, :photoBigSecret, :photoBigDcId, :photoBigVolumeId, :photoSmallLocalId, :photoSmallSecret, :photoSmallDcId, :photoSmallVolumeId);");
 
@@ -159,7 +142,7 @@ void DatabaseCore::insertDialog(const DbDialog &ddialog, bool encrypted)
 {
     begin();
     const Dialog &dialog = ddialog.dialog;
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Dialogs (peer, peerType, topMessage, unreadCount, encrypted) "
                   "VALUES (:peer, :peerType, :topMessage, :unreadCount, :encrypted);");
 
@@ -181,7 +164,7 @@ void DatabaseCore::insertContact(const DbContact &dcnt)
 {
     begin();
     const Contact &contact = dcnt.contact;
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Contacts (userId, mutual, type) "
                   "VALUES (:userId, :mutual, :type);");
     query.bindValue(":userId", contact.userId() );
@@ -200,7 +183,7 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
 {
     begin();
     const Message &message = dmessage.message;
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Messages (id, toId, toPeerType, unread, fromId, out, date, fwdDate, fwdFromId, replyToMsgId, message, actionUserId, actionPhoto, actionTitle, actionUsers, actionType, mediaAudio, mediaLastName, mediaFirstName, mediaPhoneNumber, mediaDocument, mediaGeo, mediaPhoto, mediaUserId, mediaVideo, mediaType) "
                   "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
 
@@ -212,7 +195,8 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":out", (message.flags()&0x2?true:false) );
     query.bindValue(":date",message.date() );
     query.bindValue(":fwdDate",message.fwdDate() );
-    query.bindValue(":fwdFromId",message.fwdFromId() );
+    query.bindValue(":fwdFromId",message.fwdFromId().classType()==Peer::typePeerChat?message.fwdFromId().chatId():message.fwdFromId().userId() );
+    query.bindValue(":fwdFromPeerType", message.fwdFromId().classType());
     query.bindValue(":replyToMsgId",message.replyToMsgId() );
     query.bindValue(":message", ENCRYPTER->encrypt(message.message(), encrypted) );
 
@@ -254,7 +238,7 @@ void DatabaseCore::insertMediaEncryptedKeys(qint64 mediaId, const QByteArray &ke
 {
     begin();
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO MediaKeys (id, key, iv) VALUES (:id, :key, :iv);");
     query.bindValue(":id" ,mediaId );
     query.bindValue(":key",key );
@@ -271,7 +255,7 @@ void DatabaseCore::insertMediaEncryptedKeys(qint64 mediaId, const QByteArray &ke
 void DatabaseCore::updateUnreadCount(qint64 chatId, int unreadCount)
 {
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("UPDATE Dialogs SET unreadCount=:unreadCount WHERE peer=:chatId;");
     query.bindValue(":unreadCount", unreadCount);
     query.bindValue(":chatId", chatId);
@@ -294,7 +278,7 @@ void DatabaseCore::readFullDialogs()
 
 void DatabaseCore::markMessagesAsReadFromMaxDate(qint32 chatId, qint32 maxDate)
 {
-    QSqlQuery markQuery(p->db);
+    QSqlQuery markQuery(db);
     markQuery.prepare("UPDATE Messages SET unread=0 WHERE toId=:chatId AND date<=:maxDate");
     markQuery.bindValue(":chatId", chatId);
     markQuery.bindValue(":maxDate", maxDate);
@@ -305,7 +289,7 @@ void DatabaseCore::markMessagesAsReadFromMaxDate(qint32 chatId, qint32 maxDate)
 
 void DatabaseCore::markMessagesAsRead(const QList<qint32> &messages)
 {
-    QSqlQuery markQuery(p->db);
+    QSqlQuery markQuery(db);
     markQuery.prepare("UPDATE Messages SET unread=0 WHERE id=:id");
 
     Q_FOREACH(qint32 msgId, messages) {
@@ -319,7 +303,7 @@ void DatabaseCore::markMessagesAsRead(const QList<qint32> &messages)
 void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
 {
     const Peer & peer = dpeer.peer;
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     if( peer.classType() == Peer::typePeerChat )
         query.prepare("SELECT * FROM Messages WHERE toId=:chatId AND toPeerType=:toPeerType ORDER BY id DESC LIMIT :limit OFFSET :offset");
     else
@@ -381,7 +365,12 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         message.setFlags(flags);
         message.setDate( record.value("date").toLongLong() );
         message.setFwdDate( record.value("fwdDate").toLongLong() );
-        message.setFwdFromId( record.value("fwdFromId").toLongLong() );
+        Peer fwdFromPeer( static_cast<Peer::PeerClassType>(record.value("fwdFromPeerType").toLongLong()));
+        if(fwdFromPeer.classType() == Peer::typePeerChat)
+            fwdFromPeer.setChatId(record.value("fwdFromId").toLongLong());
+        else
+            fwdFromPeer.setUserId(record.value("fwdFromId").toLongLong());
+        message.setFwdFromId(fwdFromPeer);
         message.setReplyToMsgId( record.value("replyToMsgId").toLongLong() );
         message.setMessage( ENCRYPTER->decrypt(record.value("message")) );
 
@@ -398,25 +387,25 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
 
 void DatabaseCore::setValue(const QString &key, const QString &value)
 {
-    QSqlQuery mute_query(p->db);
+    QSqlQuery mute_query(db);
     mute_query.prepare("INSERT OR REPLACE INTO general (gkey,gvalue) VALUES (:key,:val)");
     mute_query.bindValue(":key", key);
     mute_query.bindValue(":val", value);
     mute_query.exec();
 
-    p->general[key] = value;
+    general[key] = value;
     Q_EMIT valueChanged(key);
 }
 
 QString DatabaseCore::value(const QString &key) const
 {
-    return p->general.value(key);
+    return general.value(key);
 }
 
 void DatabaseCore::deleteMessage(qint64 msgId)
 {
     begin();
-    QSqlQuery query( p->db );
+    QSqlQuery query( db );
     query.prepare("DELETE FROM Messages WHERE id=:id" );
     query.bindValue( ":id" , msgId );
 
@@ -428,7 +417,7 @@ void DatabaseCore::deleteMessage(qint64 msgId)
 void DatabaseCore::deleteDialog(qint64 dlgId)
 {
     begin();
-    QSqlQuery query( p->db );
+    QSqlQuery query( db );
     query.prepare("DELETE FROM Dialogs WHERE peer=:peer" );
     query.bindValue( ":peer" , dlgId );
 
@@ -440,7 +429,7 @@ void DatabaseCore::deleteDialog(qint64 dlgId)
 void DatabaseCore::deleteHistory(qint64 dlgId)
 {
     begin();
-    QSqlQuery query( p->db );
+    QSqlQuery query( db );
     query.prepare("DELETE FROM Messages WHERE (toPeerType=:ctype AND toId=:peer) OR (toPeerType=:utype AND out=1 AND toId=:peer) OR (toPeerType=:utype AND out=0 AND fromId=:peer)" );
     query.bindValue( ":peer" , dlgId );
     query.bindValue( ":ctype", static_cast<qint64>(Peer::typePeerChat) );
@@ -454,7 +443,7 @@ void DatabaseCore::deleteHistory(qint64 dlgId)
 void DatabaseCore::blockUser(qint64 userId)
 {
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("REPLACE INTO Blocked VALUES(:uid)");
     query.bindValue(":uid", userId);
 
@@ -466,7 +455,7 @@ void DatabaseCore::blockUser(qint64 userId)
 void DatabaseCore::unblockUser(qint64 userId)
 {
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("DELETE FROM Blocked WHERE uid = :uid");
     query.bindValue(":uid", userId);
 
@@ -477,7 +466,7 @@ void DatabaseCore::unblockUser(qint64 userId)
 
 void DatabaseCore::readDialogs()
 {
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Dialogs");
 
     bool res = query.exec();
@@ -523,7 +512,7 @@ void DatabaseCore::readDialogs()
 
 void DatabaseCore::readUsers()
 {
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Users");
 
     bool res = query.exec();
@@ -583,7 +572,7 @@ void DatabaseCore::readUsers()
 
 void DatabaseCore::readChats()
 {
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Chats");
 
     bool res = query.exec();
@@ -637,7 +626,7 @@ void DatabaseCore::readChats()
 
 void DatabaseCore::readContacts()
 {
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Contacts");
 
     bool res = query.exec();
@@ -670,23 +659,23 @@ void DatabaseCore::readContacts()
 
 void DatabaseCore::reconnect()
 {
-    p->db.open();
+    db.open();
     update_db();
     init_buffer();
 }
 
 void DatabaseCore::init_buffer()
 {
-    p->general.clear();
+    general.clear();
 
-    QSqlQuery general_query(p->db);
+    QSqlQuery general_query(db);
     general_query.prepare("SELECT gkey, gvalue FROM general");
     general_query.exec();
 
     while( general_query.next() )
     {
         const QSqlRecord & record = general_query.record();
-        p->general.insert( record.value(0).toString(), record.value(1).toString() );
+        general.insert( record.value(0).toString(), record.value(1).toString() );
     }
 }
 
@@ -697,7 +686,7 @@ void DatabaseCore::update_db()
     {
         update_moveFiles();
 
-        QSqlQuery query(p->db);
+        QSqlQuery query(db);
         query.prepare("CREATE TABLE General ("
                       "gkey TEXT NOT NULL,"
                       "gvalue TEXT NOT NULL,"
@@ -707,7 +696,7 @@ void DatabaseCore::update_db()
     }
     if(db_version == 1)
     {
-        QSqlQuery query(p->db);
+        QSqlQuery query(db);
         query.prepare("CREATE TABLE MediaKeys ("
                       "id BIGINT PRIMARY KEY NOT NULL,"
                       "key BLOB NOT NULL,"
@@ -718,7 +707,7 @@ void DatabaseCore::update_db()
     }
     if(db_version == 2)
     {
-        QSqlQuery query(p->db);
+        QSqlQuery query(db);
         query.prepare("ALTER TABLE messages ADD COLUMN replyToMsgId BIGINT");
         query.exec();
 
@@ -726,7 +715,7 @@ void DatabaseCore::update_db()
     }
     if (db_version == 3)
     {
-        QSqlQuery query(p->db);
+        QSqlQuery query(db);
         query.prepare("CREATE TABLE IF NOT EXISTS Blocked (uid BIGINT PRIMARY KEY NOT NULL)");
         query.exec();
 
@@ -734,11 +723,21 @@ void DatabaseCore::update_db()
     }
     if (db_version == 4)
     {
-        QSqlQuery query(p->db);
+        QSqlQuery query(db);
         query.prepare("CREATE TABLE IF NOT EXISTS Contacts (userId BIGINT PRIMARY KEY NOT NULL, mutual BOOLEAN, type BIGINT)");
         query.exec();
 
         db_version = 5;
+    }
+
+    //Db script for API-41
+    if (db_version == 5)
+    {
+        QSqlQuery query(db);
+        query.prepare("ALTER TABLE messages ADD COLUMN fwdFromPeerType BIGINT");
+        query.exec();
+
+        db_version = 6;
     }
 
     setValue("version", QString::number(db_version) );
@@ -746,7 +745,7 @@ void DatabaseCore::update_db()
 
 void DatabaseCore::update_moveFiles()
 {
-    const QString & dpath = p->configPath + "/" + p->phoneNumber + "/downloads";
+    const QString & dpath = configPath + "/" + phoneNumber + "/downloads";
     const QHash<qint64, QStringList> & user_files = userFiles();
 
     QDir().mkpath(dpath);
@@ -800,7 +799,7 @@ QHash<qint64, QStringList> DatabaseCore::userFilesOf(const QString &mediaColumn)
 {
     QHash<qint64, QStringList> result;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT toId,  " + mediaColumn + ", fromId, out, toPeerType FROM messages WHERE "+ mediaColumn + "<>0");
     if(!query.exec())
         qDebug() << query.lastError().text();
@@ -828,7 +827,7 @@ QHash<qint64, QStringList> DatabaseCore::userPhotos()
     QHash<qint64, QStringList> result;
 
     QHash<qint64, QString> photos;
-    QSqlQuery photos_query(p->db);
+    QSqlQuery photos_query(db);
     photos_query.prepare("SELECT id, locationVolumeId FROM photos AS P JOIN photosizes AS S ON S.pid=P.id");
     if(!photos_query.exec())
         qDebug() << photos_query.lastError().text();
@@ -867,7 +866,7 @@ QHash<qint64, QStringList> DatabaseCore::userProfilePhotosOf(const QString &tabl
 {
     QHash<qint64, QStringList> result;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT id, photoBigVolumeId, photoSmallVolumeId FROM " + table);
     if(!query.exec())
         qDebug() << query.lastError().text();
@@ -913,7 +912,7 @@ void DatabaseCore::insertAudio(const Audio &audio)
         return;
 
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Audios (id, dcId, mimeType, duration, date, size, accessHash, userId, type) "
                   "VALUES (:id, :dcId, :mimeType, :duration, :date, :size, :accessHash, :type);");
 
@@ -940,7 +939,7 @@ void DatabaseCore::insertVideo(const Video &video)
         return;
 
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Videos (id, dcId, caption, mimeType, date, duration, h, size, accessHash, userId, w, type) "
                   "VALUES (:id, :dcId, :caption, :mimeType, :date, :duration, :h, :size, :accessHash, :w, :type);");
 
@@ -978,7 +977,7 @@ void DatabaseCore::insertDocument(const Document &document)
             fileName = attrs.at(i).fileName();
 
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Documents (id, dcId, mimeType, date, fileName, size, accessHash, userId, type) "
                   "VALUES (:id, :dcId, :mimeType, :date, :fileName, :size, :accessHash, :userId, :type);");
 
@@ -1008,7 +1007,7 @@ void DatabaseCore::insertGeo(int id, const GeoPoint &geo)
         return;
 
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Geos (id, longitude, lat) "
                   "VALUES (:id, :longitude, :lat);");
 
@@ -1030,7 +1029,7 @@ void DatabaseCore::insertPhoto(const Photo &photo)
         return;
 
     begin();
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("INSERT OR REPLACE INTO Photos (id, caption, date, accessHash) "
                   "VALUES (:id, :caption, :date, :accessHash);");
 
@@ -1057,7 +1056,7 @@ void DatabaseCore::insertPhotoSize(qint64 pid, const QList<PhotoSize> &sizes)
         if(size.classType() == PhotoSize::typePhotoSizeEmpty)
             continue;
 
-        QSqlQuery query(p->db);
+        QSqlQuery query(db);
         query.prepare("INSERT OR REPLACE INTO PhotoSizes (pid, h, type, size, w, locationLocalId, locationSecret, locationDcId, locationVolumeId) "
                       "VALUES (:pid, :h, :type, :size, :w, :locationLocalId, :locationSecret, :locationDcId, :locationVolumeId);");
 
@@ -1085,7 +1084,7 @@ Audio DatabaseCore::readAudio(qint64 id)
     if(!id)
         return audio;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Audios WHERE id=:id");
     query.bindValue(":id", id);
 
@@ -1119,7 +1118,7 @@ Video DatabaseCore::readVideo(qint64 id)
     if(!id)
         return video;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Videos WHERE id=:id");
     query.bindValue(":id", id);
 
@@ -1160,7 +1159,7 @@ Document DatabaseCore::readDocument(qint64 id)
     if(!id)
         return document;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Documents WHERE id=:id");
     query.bindValue(":id", id);
 
@@ -1204,7 +1203,7 @@ GeoPoint DatabaseCore::readGeo(qint64 id)
     if(!id)
         return geo;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Geos WHERE id=:id");
     query.bindValue(":id", id);
 
@@ -1233,7 +1232,7 @@ Photo DatabaseCore::readPhoto(qint64 id)
     if(!id)
         return photo;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM Photos WHERE id=:id");
     query.bindValue(":id", id);
 
@@ -1263,7 +1262,7 @@ QPair<QByteArray, QByteArray> DatabaseCore::readMediaKey(qint64 mediaId)
 {
     QPair<QByteArray, QByteArray> result;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM MediaKeys WHERE id=:id");
     query.bindValue(":id", mediaId);
     bool res = query.exec();
@@ -1290,7 +1289,7 @@ QList<PhotoSize> DatabaseCore::readPhotoSize(qint64 pid)
     if(!pid)
         return list;
 
-    QSqlQuery query(p->db);
+    QSqlQuery query(db);
     query.prepare("SELECT * FROM PhotoSizes WHERE pid=:pid");
     query.bindValue(":pid", pid);
 
@@ -1326,36 +1325,36 @@ QList<PhotoSize> DatabaseCore::readPhotoSize(qint64 pid)
 
 void DatabaseCore::begin()
 {
-    if(p->commit_timer)
+    if(commit_timer)
     {
-        killTimer(p->commit_timer);
-        p->commit_timer = startTimer(1000);
+        killTimer(commit_timer);
+        commit_timer = startTimer(1000);
         return;
     }
 
-    QSqlQuery query( p->db );
+    QSqlQuery query( db );
     query.prepare( "BEGIN" );
     query.exec();
 
-    p->commit_timer = startTimer(1000);
+    commit_timer = startTimer(1000);
 }
 
 void DatabaseCore::commit()
 {
-    if(!p->commit_timer)
+    if(!commit_timer)
         return;
 
-    QSqlQuery query( p->db );
+    QSqlQuery query( db );
     query.prepare( "COMMIT" );
     query.exec();
 
-    killTimer(p->commit_timer);
-    p->commit_timer = 0;
+    killTimer(commit_timer);
+    commit_timer = 0;
 }
 
 void DatabaseCore::timerEvent(QTimerEvent *e)
 {
-    if(e->timerId() == p->commit_timer)
+    if(e->timerId() == commit_timer)
     {
         commit();
     }
@@ -1363,9 +1362,8 @@ void DatabaseCore::timerEvent(QTimerEvent *e)
 
 DatabaseCore::~DatabaseCore()
 {
-    QString connectionName = p->connectionName;
-    delete p->default_encrypter;
-    delete p;
+    QString connectionName = connectionName;
+    delete default_encrypter;
     if(QSqlDatabase::contains(connectionName))
         QSqlDatabase::removeDatabase(connectionName);
 }

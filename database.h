@@ -5,6 +5,7 @@
 
 #include "telegramqml_global.h"
 #include "databaseabstractencryptor.h"
+#include "databasecore.h"
 
 class Peer;
 class Message;
@@ -17,7 +18,7 @@ class DbDialog;
 class DbMessage;
 class DbContact;
 class DbChat;
-class DatabasePrivate;
+
 class TELEGRAMQMLSHARED_EXPORT Database : public QObject
 {
     Q_OBJECT
@@ -77,10 +78,19 @@ private Q_SLOTS:
     void contactFounded_slt(const DbContact &contact);
 
 private:
+
     void refresh();
 
-private:
-    DatabasePrivate *p;
+    //from DatabasePrivate
+    QString path;
+
+    QThread *thread;
+    DatabaseCore *core;
+    DatabaseAbstractEncryptor *internal_encrypter;
+
+    QString internal_phoneNumber;
+    QString internal_configPath;
+
 };
 
 #endif // DATABASE_H

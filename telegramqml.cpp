@@ -1778,7 +1778,7 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
         InputPeer peer = getInputPeer(dId);
         auto entities = QList<MessageEntity>();
 
-        sendId = p->telegram->messagesSendMessage(peer, replyTo, msg, p->msg_send_random_id, ReplyMarkup(), entities);
+        sendId = p->telegram->messagesSendMessage(true, false, peer, replyTo, msg, p->msg_send_random_id, ReplyMarkup(), entities);
     }
 
     insertMessage(message, (dlg && dlg->encrypted()), false, true);
@@ -1844,16 +1844,18 @@ void TelegramQml::addContacts(const QVariantList &vcontacts)
     p->telegram->contactsImportContacts(contacts, false);
 }
 
-void TelegramQml::forwardMessages(QList<int> msgIds, qint64 peerId)
+void TelegramQml::forwardMessages(QList<int> msgIds, qint64 toPeerId)
 {
-    const InputPeer & peer = getInputPeer(peerId);
+    const InputPeer & toPeer = getInputPeer(toPeerId);
+
     qStableSort(msgIds.begin(), msgIds.end(), qGreater<int>());
 
     QList<qint64> randoms;
     for(int i=0; i<msgIds.count(); i++)
         randoms << generateRandomId();
 
-    p->telegram->messagesForwardMessages(peer, msgIds, randoms);
+    //TODO: Resolve proper source input peer
+    p->telegram->messagesForwardMessages(false, InputPeer(), msgIds, randoms, toPeer);
 }
 
 void TelegramQml::deleteMessages(QList<int> msgIds)
@@ -2158,7 +2160,7 @@ void TelegramQml::search(const QString &keyword)
     InputPeer peer(InputPeer::typeInputPeerEmpty);
     MessagesFilter filter(MessagesFilter::typeInputMessagesFilterEmpty);
 
-    p->telegram->messagesSearch(peer, keyword, filter, 0, 0, 0, 0, 50);
+    p->telegram->messagesSearch(false, peer, keyword, filter, 0, 0, 0, 0, 50);
 }
 
 void TelegramQml::searchContact(const QString &keyword)
@@ -3143,19 +3145,6 @@ void TelegramQml::contactsImportContacts_slt(qint64 id, const ContactsImportedCo
     Q_EMIT contactsImportedContacts(result.imported().length(), result.retryContacts().length());
 }
 
-void TelegramQml::contactsFound_slt(qint64 id, const QList<ContactFound> &founds, const QList<User> &users)
-{
-    Q_UNUSED(id)
-    Q_FOREACH( const User & user, users )
-        insertUser(user);
-
-    QList<qint32> result;
-    Q_FOREACH( const ContactFound & fnd, founds )
-        result << fnd.userId();
-
-    Q_EMIT contactsFounded(result);
-}
-
 void TelegramQml::contactsGetContacts_slt(qint64 id, const ContactsContacts &result)
 {
     Q_UNUSED(id)
@@ -3404,7 +3393,7 @@ void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &resu
     Q_EMIT messagesChanged(false);
 }
 
-void TelegramQml::messagesReadHistory_slt(qint64 id, const MessagesAffectedHistory &result)
+void TelegramQml::messagesReadHistory_slt(qint64 id, const MessagesAffectedMessages &result)
 {
     Q_UNUSED(result);
 
@@ -3430,7 +3419,7 @@ void TelegramQml::messagesReadHistory_slt(qint64 id, const MessagesAffectedHisto
 void TelegramQml::messagesReadEncryptedHistory_slt(qint64 id, bool ok)
 {
     if(ok)
-        messagesReadHistory_slt(id, MessagesAffectedHistory());
+        messagesReadHistory_slt(id, MessagesAffectedMessages());
 }
 
 void TelegramQml::messagesDeleteHistory_slt(qint64 id, const MessagesAffectedHistory &result)
@@ -3855,7 +3844,9 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, QString messa
     msg.setDate(date);
     msg.setFlags(UNREAD_OUT_TO_FLAG(unread, out));
     msg.setToId(to_peer);
-    msg.setFwdFromId(fwd_from_id);
+    Peer fwdfrom_peer(Peer::typePeerUser);
+    fwdfrom_peer.setUserId(fwd_from_id);
+    msg.setFwdFromId(fwdfrom_peer);
     msg.setFwdDate(fwd_date);
     msg.setReplyToMsgId(reply_to_msg_id);
 
@@ -3904,7 +3895,9 @@ void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 ch
     msg.setFlags(UNREAD_OUT_TO_FLAG(unread, out));
     msg.setToId(to_peer);
     msg.setFwdDate(fwd_date);
-    msg.setFwdFromId(fwd_from_id);
+    Peer fwdfrom_peer(Peer::typePeerUser);
+    fwdfrom_peer.setUserId(fwd_from_id);
+    msg.setFwdFromId(fwdfrom_peer);
     msg.setReplyToMsgId(reply_to_msg_id);
 
     insertMessage(msg);
