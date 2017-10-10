@@ -199,7 +199,7 @@ void TelegramDialogsModel::recheck()
 
     Telegram *tgObject = p->telegram->telegram();
     if(tgObject && tgObject->isConnected())
-        tgObject->messagesGetDialogs(0,0,1000);
+        tgObject->messagesGetDialogs(0,1000);
 }
 
 void TelegramDialogsModel::dialogsChanged(bool cachedData)
