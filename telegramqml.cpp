@@ -810,10 +810,12 @@ void TelegramQml::unmute(qint64 peerId) {
 }
 
 void TelegramQml::accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil) {
-    bool isChat = p->chats.contains(peerId);
-    InputPeer peer(getInputPeerType(peerId));
-    if(isChat)
+    InputPeer::InputPeerClassType inputPeerType = getInputPeerType(peerId);
+    InputPeer peer(inputPeerType);
+    if(inputPeerType == InputPeer::typeInputPeerChat)
         peer.setChatId(peerId);
+    else if(inputPeerType == InputPeer::typeInputPeerChannel)
+        peer.setChannelId(peerId);
     else
         peer.setUserId(peerId);
     UserObject *user = p->users.value(peerId);
@@ -1582,13 +1584,14 @@ InputUser TelegramQml::getInputUser(qint64 userId) const
 
 InputPeer TelegramQml::getInputPeer(qint64 peerId)
 {
-    bool isChat = p->chats.contains(peerId);
-    InputPeer peer(getInputPeerType(peerId));
-    if(isChat)
+    InputPeer::InputPeerClassType inputPeerType = getInputPeerType(peerId);
+    InputPeer peer(inputPeerType);
+    if(inputPeerType == InputPeer::typeInputPeerChat)
         peer.setChatId(peerId);
+    else if(inputPeerType == InputPeer::typeInputPeerChannel)
+        peer.setChannelId(peerId);
     else
         peer.setUserId(peerId);
-
     UserObject *user = p->users.value(peerId);
     if(user)
         peer.setAccessHash(user->accessHash());
@@ -2433,11 +2436,12 @@ void TelegramQml::cancelDownload(DownloadObject *download)
 
 Message TelegramQml::newMessage(qint64 dId)
 {
-    bool isChat = p->chats.contains(dId);
+    Peer::PeerClassType peerType = getPeerType(dId);
 
-    Peer to_peer(getPeerType(dId));
-    to_peer.setChatId(isChat?dId:0);
-    to_peer.setUserId(isChat?0:dId);
+    Peer to_peer(peerType);
+    to_peer.setChatId(peerType==Peer::typePeerChat?dId:0);
+    to_peer.setUserId(peerType==Peer::typePeerUser?dId:0);
+    to_peer.setChannelId(peerType==Peer::typePeerChannel?dId:0);
 
     DialogObject *dlg = dialog(dId);
     if(dlg && dlg->encrypted())
@@ -2609,6 +2613,8 @@ void TelegramQml::cleanUpMessages_prv()
         qint64 dId = dlg->peer()->userId();
         if(!dId)
             dId = dlg->peer()->chatId();
+        if(!dId)
+            dId = dlg->peer()->channelId();
         if(!dId)
             continue;
 
@@ -3190,6 +3196,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
     Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     peer.setChatId(msgObj->toId()->chatId());
     peer.setUserId(msgObj->toId()->userId());
+    peer.setChannelId(msgObj->toId()->channelId());
 
     Message msg(Message::typeMessage);
     msg.setFromId(msgObj->fromId());
@@ -3599,6 +3606,7 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
     Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     peer.setChatId(msgObj->toId()->chatId());
     peer.setUserId(msgObj->toId()->userId());
+    peer.setChannelId(msgObj->toId()->channelId());
 
     Message msg(Message::typeMessage);
     msg.setFromId(msgObj->fromId());
@@ -3645,6 +3653,7 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     peer.setChatId(msgObj->toId()->chatId());
     peer.setUserId(msgObj->toId()->userId());
+    peer.setChannelId(msgObj->toId()->channelId());
 
     Dialog dialog;
     dialog.setPeer(peer);
@@ -4410,6 +4419,7 @@ void TelegramQml::insertUpdate(const Update &update)
         Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
         peer.setChatId(msgObj->toId()->chatId());
         peer.setUserId(msgObj->toId()->userId());
+        peer.setChannelId(msgObj->toId()->channelId());
 
         Message msg(Message::typeMessage);
         msg.setFromId(msgObj->fromId());
@@ -5036,7 +5046,14 @@ void TelegramQml::insertToGarbeges(QObject *obj)
     if(qobject_cast<DialogObject*>(obj))
     {
         DialogObject *dlg = qobject_cast<DialogObject*>(obj);
-        const qint64 dId = dlg->peer()->chatId()? dlg->peer()->chatId() : dlg->peer()->userId();
+
+        qint64 dId;
+        if (dlg->peer()->classType()==Peer::typePeerChat)
+            dId = dlg->peer()->chatId();
+        else if (dlg->peer()->classType()==Peer::typePeerChannel)
+            dId = dlg->peer()->userId();
+        else
+            dId = dlg->peer()->channelId();
 
         p->dialogs.remove(dId);
         p->fakeDialogs.remove(dId);
@@ -5129,7 +5146,13 @@ void TelegramQml::refreshUnreadCount()
     int unreadCount = 0;
     Q_FOREACH( DialogObject *obj, p->dialogs )
     {
-        int dId = obj->peer()->chatId()? obj->peer()->chatId() : obj->peer()->userId();
+        qint64 dId;
+        if (obj->peer()->classType()==Peer::typePeerChat)
+            dId = obj->peer()->chatId();
+        else if (obj->peer()->classType()==Peer::typePeerChannel)
+            dId = obj->peer()->userId();
+        else
+            dId = obj->peer()->channelId();
         if(p->userdata && (p->userdata->notify(dId) & UserData::DisableBadges) )
             continue;
 
@@ -5241,35 +5264,27 @@ qint64 TelegramQml::generateRandomId() const
     return randomId;
 }
 
+Peer::PeerClassType TelegramQml::getPeerType(qint64 pid)
+{
+    DialogObject *dialog_obj = dialog(pid);
+
+    return static_cast<Peer::PeerClassType>(dialog_obj->peer()->classType());
+}
+
 InputPeer::InputPeerClassType TelegramQml::getInputPeerType(qint64 pid)
 {
     InputPeer::InputPeerClassType res = InputPeer::typeInputPeerEmpty;
 
-    if(p->users.contains(pid))
+    switch(getPeerType(pid))
     {
-        UserObject *user = p->users.value(pid);
-        switch(user->classType())
-        {
-            case User::typeUser:
-                res = InputPeer::typeInputPeerUser;
-            break;
-        }
+        case Peer::typePeerUser:
+            res = InputPeer::typeInputPeerUser;
+        case Peer::typePeerChat:
+            res = InputPeer::typeInputPeerChat;
+        case Peer::typePeerChannel:
+            res = InputPeer::typeInputPeerChannel;
+        break;
     }
-    else
-    if(p->chats.contains(pid))
-        res = InputPeer::typeInputPeerChat;
-
-    return res;
-}
-
-Peer::PeerClassType TelegramQml::getPeerType(qint64 pid)
-{
-    Peer::PeerClassType res;
-
-    if(p->users.contains(pid))
-        res = Peer::typePeerUser;
-    else
-        res = Peer::typePeerChat;
 
     return res;
 }

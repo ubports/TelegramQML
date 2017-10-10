@@ -146,7 +146,12 @@ void DatabaseCore::insertDialog(const DbDialog &ddialog, bool encrypted)
     query.prepare("INSERT OR REPLACE INTO Dialogs (peer, peerType, topMessage, unreadCount, encrypted) "
                   "VALUES (:peer, :peerType, :topMessage, :unreadCount, :encrypted);");
 
-    query.bindValue(":peer",dialog.peer().classType()==Peer::typePeerChat?dialog.peer().chatId():dialog.peer().userId() );
+    if (dialog.peer().classType()==Peer::typePeerChat)
+        query.bindValue(":peer", dialog.peer().chatId() );
+    else if (dialog.peer().classType()==Peer::typePeerChannel)
+        query.bindValue(":peer", dialog.peer().channelId() );
+    else
+        query.bindValue(":peer", dialog.peer().userId() );
     query.bindValue(":peerType",dialog.peer().classType() );
     query.bindValue(":topMessage",dialog.topMessage() );
     query.bindValue(":unreadCount",dialog.unreadCount() );
@@ -188,14 +193,24 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
                   "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
 
     query.bindValue(":id",message.id() );
-    query.bindValue(":toId",message.toId().classType()==Peer::typePeerChat?message.toId().chatId():message.toId().userId() );
+    if (message.toId().classType()==Peer::typePeerChat)
+        query.bindValue(":toId", message.toId().chatId() );
+    else if (message.toId().classType()==Peer::typePeerChannel)
+        query.bindValue(":toId", message.toId().channelId() );
+    else
+        query.bindValue(":toId", message.toId().userId() );
     query.bindValue(":toPeerType",message.toId().classType() );
     query.bindValue(":unread", (message.flags()&0x1?true:false) );
     query.bindValue(":fromId",message.fromId() );
     query.bindValue(":out", (message.flags()&0x2?true:false) );
     query.bindValue(":date",message.date() );
     query.bindValue(":fwdDate",message.fwdDate() );
-    query.bindValue(":fwdFromId",message.fwdFromId().classType()==Peer::typePeerChat?message.fwdFromId().chatId():message.fwdFromId().userId() );
+    if (message.fwdFromId().classType()==Peer::typePeerChat)
+        query.bindValue(":fwdFromId", message.fwdFromId().chatId() );
+    else if (message.fwdFromId().classType()==Peer::typePeerChannel)
+        query.bindValue(":fwdFromId", message.fwdFromId().channelId() );
+    else
+        query.bindValue(":fwdFromId", message.fwdFromId().userId() );
     query.bindValue(":fwdFromPeerType", message.fwdFromId().classType());
     query.bindValue(":replyToMsgId",message.replyToMsgId() );
     query.bindValue(":message", ENCRYPTER->encrypt(message.message(), encrypted) );
@@ -304,7 +319,7 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
 {
     const Peer & peer = dpeer.peer;
     QSqlQuery query(db);
-    if( peer.classType() == Peer::typePeerChat )
+    if( peer.classType() == Peer::typePeerChat || peer.classType() == Peer::typePeerChannel )
         query.prepare("SELECT * FROM Messages WHERE toId=:chatId AND toPeerType=:toPeerType ORDER BY id DESC LIMIT :limit OFFSET :offset");
     else
         query.prepare("SELECT * FROM Messages WHERE toPeerType=:toPeerType AND "
@@ -347,6 +362,8 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         Peer toPeer( static_cast<Peer::PeerClassType>(record.value("toPeerType").toLongLong()) );
         if(toPeer.classType() == Peer::typePeerChat)
             toPeer.setChatId(record.value("toId").toLongLong());
+        else if(toPeer.classType() == Peer::typePeerChannel)
+            toPeer.setChannelId(record.value("toId").toLongLong());
         else
             toPeer.setUserId(record.value("toId").toLongLong());
 
@@ -368,6 +385,8 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         Peer fwdFromPeer( static_cast<Peer::PeerClassType>(record.value("fwdFromPeerType").toLongLong()));
         if(fwdFromPeer.classType() == Peer::typePeerChat)
             fwdFromPeer.setChatId(record.value("fwdFromId").toLongLong());
+        else if(fwdFromPeer.classType() == Peer::typePeerChannel)
+            fwdFromPeer.setChannelId(record.value("fwdFromId").toLongLong());
         else
             fwdFromPeer.setUserId(record.value("fwdFromId").toLongLong());
         message.setFwdFromId(fwdFromPeer);
@@ -430,9 +449,10 @@ void DatabaseCore::deleteHistory(qint64 dlgId)
 {
     begin();
     QSqlQuery query( db );
-    query.prepare("DELETE FROM Messages WHERE (toPeerType=:ctype AND toId=:peer) OR (toPeerType=:utype AND out=1 AND toId=:peer) OR (toPeerType=:utype AND out=0 AND fromId=:peer)" );
+    query.prepare("DELETE FROM Messages WHERE (toPeerType=:ctype AND toId=:peer) OR (toPeerType=:chtype AND toId=:peer) OR (toPeerType=:utype AND out=1 AND toId=:peer) OR (toPeerType=:utype AND out=0 AND fromId=:peer)" );
     query.bindValue( ":peer" , dlgId );
     query.bindValue( ":ctype", static_cast<qint64>(Peer::typePeerChat) );
+    query.bindValue( ":chtype", static_cast<qint64>(Peer::typePeerChannel) );
     query.bindValue( ":utype", static_cast<qint64>(Peer::typePeerUser) );
 
     bool res = query.exec();
@@ -483,6 +503,8 @@ void DatabaseCore::readDialogs()
         Peer peer( static_cast<Peer::PeerClassType>(record.value("peerType").toLongLong()) );
         if(peer.classType() == Peer::typePeerChat)
             peer.setChatId(record.value("peer").toLongLong());
+        else if(peer.classType() == Peer::typePeerChannel)
+            peer.setChannelId(record.value("peer").toLongLong());
         else
             peer.setUserId(record.value("peer").toLongLong());
 
@@ -814,7 +836,7 @@ QHash<qint64, QStringList> DatabaseCore::userFilesOf(const QString &mediaColumn)
         const bool   out      = record.value(3).toBool();
         const qint64 peerType = record.value(4).toLongLong();
 
-        qint64 dId = peerType==Peer::typePeerChat || out? toId : fromId;
+        qint64 dId = peerType==Peer::typePeerChat || Peer::typePeerChannel || out? toId : fromId;
 
         result[dId] << QString::number(mediaId);
     }
