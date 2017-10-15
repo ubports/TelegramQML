@@ -166,8 +166,6 @@ int TelegramDialogsModel::indexOf(DialogObject *dialog)
     qint64 dId = dialog->peer()->chatId();
     if(!dId)
         dId = dialog->peer()->userId();
-    if(!dId)
-        dId = dialog->peer()->channelId();
 
     return p->dialogs.indexOf(dId);
 }
@@ -201,7 +199,10 @@ void TelegramDialogsModel::recheck()
 
     Telegram *tgObject = p->telegram->telegram();
     if(tgObject && tgObject->isConnected())
-        tgObject->messagesGetDialogs(0,1000);
+    {
+        tgObject->messagesGetDialogs(0, 1000);
+        tgObject->channelsGetDialogs(0, 1000);
+    }
 }
 
 void TelegramDialogsModel::dialogsChanged(bool cachedData)

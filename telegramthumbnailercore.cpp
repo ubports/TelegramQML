@@ -68,7 +68,6 @@ void TelegramThumbnailerCore::createThumbnail(QString source, QString dest) {
     QImage image(THUMB_SIZE, THUMB_SIZE, QImage::Format_ARGB32);
     image.fill(0);
     image.save(dest, "JPEG", THUMB_QUAILTY);
-    qWarning() << "created thumbnail placeholder";
 
     Q_EMIT thumbnailCreated(source);
 }

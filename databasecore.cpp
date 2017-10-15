@@ -147,14 +147,14 @@ void DatabaseCore::insertDialog(const DbDialog &ddialog, bool encrypted)
                   "VALUES (:peer, :peerType, :topMessage, :unreadCount, :encrypted);");
 
     if (dialog.peer().classType()==Peer::typePeerChat)
-        query.bindValue(":peer", dialog.peer().chatId() );
+        query.bindValue(":peer", dialog.peer().chatId());
     else if (dialog.peer().classType()==Peer::typePeerChannel)
-        query.bindValue(":peer", dialog.peer().channelId() );
+        query.bindValue(":peer", dialog.peer().channelId());
     else
-        query.bindValue(":peer", dialog.peer().userId() );
-    query.bindValue(":peerType",dialog.peer().classType() );
-    query.bindValue(":topMessage",dialog.topMessage() );
-    query.bindValue(":unreadCount",dialog.unreadCount() );
+        query.bindValue(":peer", dialog.peer().userId());
+    query.bindValue(":peerType",dialog.peer().classType());
+    query.bindValue(":topMessage",dialog.topMessage());
+    query.bindValue(":unreadCount",dialog.unreadCount());
     query.bindValue(":encrypted",encrypted );
 
     bool res = query.exec();
