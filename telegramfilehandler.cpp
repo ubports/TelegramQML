@@ -596,9 +596,9 @@ FileLocationObject *TelegramFileHandler::analizeObject(QObject *target, int *tar
     {
         PeerObject *peer = static_cast<PeerObject*>(target);
         if(peer->classType() == Peer::typePeerUser)
-            object = p->telegram->chat(peer->userId());
+            object = p->telegram->user(peer->userId());
         else
-            object = p->telegram->user(peer->chatId());
+            object = p->telegram->chat(peer->chatId());
     }
         break;
 
