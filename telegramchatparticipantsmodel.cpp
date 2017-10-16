@@ -82,6 +82,8 @@ void TelegramChatParticipantsModel::setDialog(DialogObject *dlg)
         return;
     if(!p->dialog->peer()->chatId())
         return;
+    if(!p->dialog->peer()->channelId())
+        return;
 
     refresh();
 }
@@ -139,6 +141,8 @@ void TelegramChatParticipantsModel::refresh()
         return;
     qint64 dId = p->dialog->peer()->chatId();
     if(!dId)
+        dId = p->dialog->peer()->channelId();
+    if(!dId)
         return;
     p->telegram->messagesGetFullChat(dId);
 
@@ -153,6 +157,8 @@ void TelegramChatParticipantsModel::chatFullsChanged()
     endResetModel();
 
     qint64 dId = p->dialog->peer()->chatId();
+    if(!dId)
+        dId = p->dialog->peer()->channelId();
     ChatFullObject *chatFull = p->telegram->chatFull(dId);
     if( !chatFull )
         return;

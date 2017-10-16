@@ -193,20 +193,24 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
                   "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
 
     query.bindValue(":id",message.id() );
-    if (message.toId().classType()==Peer::typePeerUser)
-        query.bindValue(":toId", message.toId().userId());
-    else
+    if (message.toId().classType()==Peer::typePeerChannel)
+        query.bindValue(":toId", message.toId().channelId());
+    else if (message.toId().classType()==Peer::typePeerChat)
         query.bindValue(":toId", message.toId().chatId());
+    else
+        query.bindValue(":toId", message.toId().userId());
     query.bindValue(":toPeerType",message.toId().classType() );
     query.bindValue(":unread", (message.flags()&0x1?true:false) );
     query.bindValue(":fromId",message.fromId() );
     query.bindValue(":out", (message.flags()&0x2?true:false) );
     query.bindValue(":date",message.date() );
     query.bindValue(":fwdDate",message.fwdDate() );
-    if (message.fwdFromId().classType()==Peer::typePeerUser)
-        query.bindValue(":fwdFromId", message.fwdFromId().userId() );
-    else
+    if (message.fwdFromId().classType()==Peer::typePeerChannel)
+        query.bindValue(":fwdFromId", message.fwdFromId().channelId() );
+    else if (message.fwdFromId().classType()==Peer::typePeerChat)
         query.bindValue(":fwdFromId", message.fwdFromId().chatId() );
+    else
+        query.bindValue(":fwdFromId", message.fwdFromId().userId() );
     query.bindValue(":fwdFromPeerType", message.fwdFromId().classType());
     query.bindValue(":replyToMsgId",message.replyToMsgId() );
     query.bindValue(":message", ENCRYPTER->encrypt(message.message(), encrypted) );
@@ -322,7 +326,7 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
                       "( (toId=:userId AND out=1) OR (fromId=:userId AND out=0) ) ORDER BY id DESC LIMIT :limit OFFSET :offset");
 
     query.bindValue(":userId", peer.userId());
-    query.bindValue(":chatId", peer.chatId());
+    query.bindValue(":chatId", peer.classType()==Peer::typePeerChat ? peer.chatId() : peer.channelId());
     query.bindValue(":toPeerType", peer.classType());
     query.bindValue(":offset", offset);
     query.bindValue(":limit", limit);

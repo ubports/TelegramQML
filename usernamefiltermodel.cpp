@@ -139,6 +139,8 @@ void UserNameFilterModel::listChanged()
     if(p->telegram && p->dialog)
     {
         qint64 chatId = p->dialog->peer()->chatId();
+        if(!chatId)
+            chatId = p->dialog->peer()->channelId();
         if(chatId)
         {
             ChatFullObject *chatFull = p->telegram->chatFull(chatId);

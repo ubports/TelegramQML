@@ -165,6 +165,8 @@ int TelegramDialogsModel::indexOf(DialogObject *dialog)
 
     qint64 dId = dialog->peer()->chatId();
     if(!dId)
+        dId = dialog->peer()->channelId();
+    if(!dId)
         dId = dialog->peer()->userId();
 
     return p->dialogs.indexOf(dId);

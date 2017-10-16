@@ -120,7 +120,8 @@ void TelegramMessagesModel::setDialog(DialogObject *dlg)
     if( !p->dialog )
         return;
     if( !p->dialog->peer()->chatId() &&
-        !p->dialog->peer()->userId())
+        !p->dialog->peer()->userId() &&
+        !p->dialog->peer()->channelId())
         return;
 
     p->unreadCount = p->dialog->unreadCount();
@@ -268,10 +269,12 @@ void TelegramMessagesModel::sendMessage(const QString &msg, int inReplyTo)
 
     clearNewMessageFlag();
     qint64 dId;
-    if (p->dialog->peer()->classType()==Peer::typePeerUser)
-        dId = p->dialog->peer()->userId();
-    else
+    if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        dId = p->dialog->peer()->channelId();
+    else if (p->dialog->peer()->classType()==Peer::typePeerChat)
         dId = p->dialog->peer()->chatId();
+    else
+        dId = p->dialog->peer()->userId();
     p->telegram->sendMessage(dId, msg, inReplyTo);
 }
 
@@ -369,21 +372,23 @@ bool TelegramMessagesModel::hasNewMessage() const
 
 qint64 TelegramMessagesModel::peerId() const
 {
-    if(p->dialog->peer()->classType()==Peer::typePeerUser)
-        return p->dialog->peer()->userId();
-    else
+    if(p->dialog->peer()->classType()==Peer::typePeerChannel)
+        return p->dialog->peer()->channelId();
+    else if(p->dialog->peer()->classType()==Peer::typePeerUser)
         return p->dialog->peer()->chatId();
+    else
+        return p->dialog->peer()->userId();
 }
 
 Peer TelegramMessagesModel::peer() const
 {
     Peer peer( static_cast<Peer::PeerClassType>(p->dialog->peer()->classType()) );
-    if(peer.classType() == Peer::typePeerUser)
-        peer.setUserId(p->dialog->peer()->userId());
+    if(peer.classType() == Peer::typePeerChannel)
+        peer.setChannelId(p->dialog->peer()->channelId());
     else if(peer.classType() == Peer::typePeerChat)
         peer.setChatId(p->dialog->peer()->chatId());
     else
-        peer.setChannelId(p->dialog->peer()->chatId());
+        peer.setUserId(p->dialog->peer()->userId());
     return peer;
 }
 
@@ -407,7 +412,9 @@ void TelegramMessagesModel::messagesChanged_priv()
         return;
 
     qint64 did;
-    if (p->dialog->peer()->classType()==Peer::typePeerChat)
+    if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        did = p->dialog->peer()->channelId();
+    else if (p->dialog->peer()->classType()==Peer::typePeerChat)
         did = p->dialog->peer()->chatId();
     else
         did = p->dialog->peer()->userId();

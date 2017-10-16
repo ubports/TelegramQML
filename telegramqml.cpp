@@ -890,6 +890,8 @@ qint64 TelegramQml::messageDialogId(qint64 id) const
 
     qint64 dId = msg->toId()->chatId();
     if(dId == 0)
+        dId = msg->toId()->channelId();
+    if(dId == 0)
         dId = msg->out()? msg->toId()->userId() : msg->fromId();
 
     return dId;
@@ -2614,6 +2616,8 @@ void TelegramQml::cleanUpMessages_prv()
         if(!dId)
             dId = dlg->peer()->chatId();
         if(!dId)
+            dId = dlg->peer()->channelId();
+        if(!dId)
             continue;
 
         const QList<qint64> &list = p->messages_list.value(dId);
@@ -3197,7 +3201,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
     if (peer.classType() == Peer::typePeerChat)
         peer.setChatId(msgObj->toId()->chatId());
     else if (peer.classType() == Peer::typePeerChannel)
-        peer.setChannelId(msgObj->toId()->chatId());
+        peer.setChannelId(msgObj->toId()->channelId());
     else
         peer.setUserId(msgObj->toId()->userId());
 
@@ -3212,6 +3216,8 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
     msg.setMedia(result.media());
 
     qint64 did = msg.toId().chatId();
+    if( !did )
+        did = msg.toId().channelId();
     if( !did )
         did = msgObj->out()? msg.toId().userId() : msg.fromId();
 
@@ -3423,7 +3429,7 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &resul
     Q_FOREACH( const Dialog & d, result.dialogs() )
     {
         insertDialog(d);
-        qint64 dialogId = d.peer().chatId()? d.peer().chatId() : d.peer().userId();
+        qint64 dialogId = d.peer().channelId()? d.peer().channelId() : d.peer().chatId()? d.peer().chatId() : d.peer().userId();
         //Remove this dialog from deleted dialogs, it is still valid
         deletedDialogs.remove(dialogId);
     }
@@ -3584,6 +3590,8 @@ void TelegramQml::messagesDeleteChatUser_slt(qint64 id, const UpdatesType &updat
     {
         const Message &message = upd.message();
         qint64 peerId = message.toId().chatId();
+        if (!peerId)
+            peerId = message.toId().channelId();
         if(peerId && p->deleteChatIds.contains(peerId)) {
             messagesDeleteHistory(peerId, true, true);
         }
@@ -3665,7 +3673,7 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
     if (peer.classType() == Peer::typePeerChat)
         peer.setChatId(msgObj->toId()->chatId());
     else if (peer.classType() == Peer::typePeerChannel)
-        peer.setChannelId(msgObj->toId()->chatId());
+        peer.setChannelId(msgObj->toId()->channelId());
     else
         peer.setUserId(msgObj->toId()->userId());
 
@@ -3678,6 +3686,8 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
     msg.setMessage(msgObj->message());
 
     qint64 did = msg.toId().chatId();
+    if ( !did )
+        did = msg.toId().channelId();
     if( !did )
         did = FLAG_TO_OUT(msg.flags())? msg.toId().userId() : msg.fromId();
 
@@ -3797,6 +3807,8 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     msg.setMessage(msgObj->message());
 
     qint64 did = msg.toId().chatId();
+    if( !did )
+        did = msg.toId().channelId();
     if( !did )
         did = FLAG_TO_OUT(msg.flags())? msg.toId().userId() : msg.fromId();
 
@@ -4264,6 +4276,8 @@ void TelegramQml::insertMessage(const Message &t_m, bool encrypted, bool fromDb,
 
         qint64 did = m.toId().chatId();
         if( !did )
+            did = m.toId().channelId();
+        if( !did )
             did = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
 
         QList<qint64> list = p->messages_list.value(did);
@@ -4432,7 +4446,7 @@ void TelegramQml::insertUpdates(const UpdatesType &updates)
 void TelegramQml::insertUpdate(const Update &update)
 {
     UserObject *user = p->users.value(update.userId());
-    ChatObject *chat = p->chats.value(update.chatId());
+    ChatObject *chat = p->chats.value(update.chatId() ? update.chatId() : update.channelId());
 
     switch( static_cast<int>(update.classType()) )
     {
@@ -4459,7 +4473,7 @@ void TelegramQml::insertUpdate(const Update &update)
 
         if (notifyPeer.classType() == NotifyPeer::typeNotifyPeer && p->globalMute) {
             Peer peer = notifyPeer.peer();
-            qint64 peerId = peer.userId() ? peer.userId() : peer.chatId();
+            qint64 peerId = peer.userId() ? peer.userId() : peer.chatId() ? peer.chatId() : peer.channelId();
 
             if (isMuted) {
                 p->userdata->addMute(peerId);
@@ -4484,7 +4498,7 @@ void TelegramQml::insertUpdate(const Update &update)
         if (peer.classType() == Peer::typePeerChat)
             peer.setChatId(msgObj->toId()->chatId());
         else if (peer.classType() == Peer::typePeerChannel)
-            peer.setChannelId(msgObj->toId()->chatId());
+            peer.setChannelId(msgObj->toId()->channelId());
         else
             peer.setUserId(msgObj->toId()->userId());
 
@@ -4498,6 +4512,8 @@ void TelegramQml::insertUpdate(const Update &update)
         msg.setReplyToMsgId(msgObj->replyToMsgId());
 
         qint64 did = msg.toId().chatId();
+        if( !did )
+            did = msg.toId().channelId();
         if( !did )
             did = FLAG_TO_OUT(msg.flags())? msg.toId().userId() : msg.fromId();
 
@@ -4690,7 +4706,7 @@ void TelegramQml::insertUpdate(const Update &update)
     case Update::typeUpdateReadHistoryOutbox:
     {
         const qint64 maxId = update.maxId();
-        const qint64 dId = update.peer().chatId()? update.peer().chatId() : update.peer().userId();
+        const qint64 dId = update.peer().channelId()? update.peer().channelId() : update.peer().chatId()? update.peer().chatId() : update.peer().userId();
         const QList<qint64> &msgs = p->messages_list.value(dId);
         Q_FOREACH(qint64 msg, msgs)
             if(msg <= maxId)
@@ -5117,10 +5133,12 @@ void TelegramQml::insertToGarbeges(QObject *obj)
         DialogObject *dlg = qobject_cast<DialogObject*>(obj);
 
         qint64 dId;
-        if (dlg->peer()->classType()==Peer::typePeerUser)
-            dId = dlg->peer()->userId();
-        else
+        if (dlg->peer()->classType()==Peer::typePeerChat)
             dId = dlg->peer()->chatId();
+        else if (dlg->peer()->classType()==Peer::typePeerChannel)
+            dId = dlg->peer()->channelId();
+        else
+            dId = dlg->peer()->userId();
 
         p->dialogs.remove(dId);
         p->fakeDialogs.remove(dId);
@@ -5214,10 +5232,12 @@ void TelegramQml::refreshUnreadCount()
     Q_FOREACH( DialogObject *obj, p->dialogs )
     {
         qint64 dId;
-        if (obj->peer()->classType()==Peer::typePeerUser)
-            dId = obj->peer()->userId();
-        else
+        if (obj->peer()->classType()==Peer::typePeerChat)
             dId = obj->peer()->chatId();
+        else if (obj->peer()->classType()==Peer::typePeerChannel)
+            dId = obj->peer()->channelId();
+        else
+            dId = obj->peer()->userId();
         if(p->userdata && (p->userdata->notify(dId) & UserData::DisableBadges) )
             continue;
 
@@ -5331,24 +5351,45 @@ qint64 TelegramQml::generateRandomId() const
 
 Peer::PeerClassType TelegramQml::getPeerType(qint64 pid)
 {
-    DialogObject *dialog_obj = dialog(pid);
+    Peer::PeerClassType res;
 
-    return static_cast<Peer::PeerClassType>(dialog_obj->peer()->classType());
+    if(p->users.contains(pid))
+        res = Peer::typePeerUser;
+    else if(p->chats.contains(pid))
+    {
+        ChatObject *chat = p->chats.value(pid);
+        if (chat->classType() == Chat::typeChannel ||
+            chat->classType() == Chat::typeChannelForbidden)
+            res = Peer::typePeerChannel;
+        else
+            res = Peer::typePeerChat;
+    }
+
+    return res;
 }
 
 InputPeer::InputPeerClassType TelegramQml::getInputPeerType(qint64 pid)
 {
     InputPeer::InputPeerClassType res = InputPeer::typeInputPeerEmpty;
 
-    switch(getPeerType(pid))
+    if(p->users.contains(pid))
     {
-        case Peer::typePeerUser:
-            res = InputPeer::typeInputPeerUser;
-        case Peer::typePeerChat:
-            res = InputPeer::typeInputPeerChat;
-        case Peer::typePeerChannel:
+        UserObject *user = p->users.value(pid);
+        switch(user->classType())
+        {
+            case User::typeUser:
+                res = InputPeer::typeInputPeerUser;
+            break;
+        }
+    }
+    else if(p->chats.contains(pid))
+    {
+        ChatObject *chat = p->chats.value(pid);
+        if (chat->classType() == Chat::typeChannel ||
+            chat->classType() == Chat::typeChannelForbidden)
             res = InputPeer::typeInputPeerChannel;
-        break;
+        else
+            res = InputPeer::typeInputPeerChat;
     }
 
     return res;

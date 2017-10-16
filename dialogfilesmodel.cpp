@@ -173,6 +173,8 @@ QString DialogFilesModel::dirPath() const
 
     qint64 dId = p->dialog->peer()->chatId();
     if(!dId)
+        dId = p->dialog->peer()->channelId();
+    if(!dId)
         dId = p->dialog->peer()->userId();
 
     return p->telegram->downloadPath() + "/" + QString::number(dId);

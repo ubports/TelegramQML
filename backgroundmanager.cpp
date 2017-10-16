@@ -67,9 +67,11 @@ qint64 BackgroundManager::dialogId()
 
     qint64 dId = p->dialog->peer()->chatId();
     if(!dId)
+        dId = p->dialog->peer()->channelId();
+    if(!dId)
         dId = p->dialog->peer()->userId();
     if(!dId)
-        return 0;
+        dId = 0;
 
     return dId;
 }

@@ -460,15 +460,14 @@ class TELEGRAMQMLSHARED_EXPORT PeerObject : public TqObject
     Q_OBJECT
     Q_PROPERTY(qint32 chatId READ chatId WRITE setChatId NOTIFY chatIdChanged)
     Q_PROPERTY(qint32 userId READ userId WRITE setUserId NOTIFY userIdChanged)
+    Q_PROPERTY(qint32 channelId READ channelId WRITE setChannelId NOTIFY channelIdChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
 public:
     PeerObject(const Peer & another, QObject *parent = 0) : TqObject(parent){
         (void)another;
-        if(another.classType() == Peer::typePeerChat)
-            _chatId = another.chatId();
-        else if(another.classType() == Peer::typePeerChannel)
-            _chatId = another.channelId();
+        _chatId = another.chatId();
+        _channelId = another.channelId();
         _userId = another.userId();
         _classType = another.classType();
 
@@ -500,6 +499,18 @@ public:
         Q_EMIT changed();
     }
 
+    qint32 channelId() const {
+        return _channelId;
+    }
+
+    void setChannelId(qint32 value) {
+        if( value == _channelId )
+            return;
+        _channelId = value;
+        Q_EMIT channelIdChanged();
+        Q_EMIT changed();
+    }
+
     quint32 classType() const {
         return _classType;
     }
@@ -514,15 +525,12 @@ public:
 
 
     void operator= ( const Peer & another) {
-        if(another.classType() == Peer::typePeerChat)
-            _chatId = another.chatId();
-        else if(another.classType() == Peer::typePeerChannel)
-            _chatId = another.channelId();
-        else
-            _chatId = 0;
+        _chatId = another.chatId();
         Q_EMIT chatIdChanged();
         _userId = another.userId();
         Q_EMIT userIdChanged();
+        _channelId = another.channelId();
+        Q_EMIT channelIdChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
 
@@ -532,12 +540,14 @@ Q_SIGNALS:
     void changed();
     void chatIdChanged();
     void userIdChanged();
+    void channelIdChanged();
     void classTypeChanged();
 
 private:
     qint32 _chatId;
     qint32 _userId;
-    qint32 _classType;
+    qint32 _channelId;
+    quint32 _classType;
 
 };
 
@@ -628,19 +638,16 @@ class TELEGRAMQMLSHARED_EXPORT InputPeerObject : public TqObject
     Q_OBJECT
     Q_PROPERTY(qint32 chatId READ chatId WRITE setChatId NOTIFY chatIdChanged)
     Q_PROPERTY(qint32 userId READ userId WRITE setUserId NOTIFY userIdChanged)
+    Q_PROPERTY(qint32 channelId READ channelId WRITE setChannelId NOTIFY channelIdChanged)
     Q_PROPERTY(qint64 accessHash READ accessHash WRITE setAccessHash NOTIFY accessHashChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
 public:
     InputPeerObject(const InputPeer & another, QObject *parent = 0) : TqObject(parent){
         (void)another;
-        if(another.classType() == InputPeer::typeInputPeerChat)
-            _chatId = another.chatId();
-        else if(another.classType() == InputPeer::typeInputPeerChannel)
-            _chatId = another.channelId();
-        else
-            _chatId = 0;
+        _chatId = another.chatId();
         _userId = another.userId();
+        _channelId = another.channelId();
         _accessHash = another.accessHash();
         _classType = another.classType();
 
@@ -676,6 +683,18 @@ public:
         return _accessHash;
     }
 
+    qint32 channelId() const {
+        return _channelId;
+    }
+
+    void setChannelId(qint32 value) {
+        if( value == _channelId )
+            return;
+        _channelId = value;
+        Q_EMIT channelIdChanged();
+        Q_EMIT changed();
+    }
+
     void setAccessHash(qint64 value) {
         if( value == _accessHash )
             return;
@@ -698,13 +717,10 @@ public:
 
 
     void operator= ( const InputPeer & another) {
-        if(another.classType() == InputPeer::typeInputPeerChat)
-            _chatId = another.chatId();
-        else if(another.classType() == InputPeer::typeInputPeerChannel)
-            _chatId = another.channelId();
-        else
-            _chatId = 0;
+        _chatId = another.chatId();
         Q_EMIT chatIdChanged();
+        _channelId = another.channelId();
+        Q_EMIT channelIdChanged();
         _userId = another.userId();
         Q_EMIT userIdChanged();
         _accessHash = another.accessHash();
@@ -718,12 +734,14 @@ Q_SIGNALS:
     void changed();
     void chatIdChanged();
     void userIdChanged();
+    void channelIdChanged();
     void accessHashChanged();
     void classTypeChanged();
 
 private:
     qint32 _chatId;
     qint32 _userId;
+    qint32 _channelId;
     qint64 _accessHash;
     quint32 _classType;
 
