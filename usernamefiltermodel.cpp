@@ -147,7 +147,12 @@ void UserNameFilterModel::listChanged()
             if(chatFull)
                 dialogList = chatFull->participants()->participants()->userIds();
             else
-                p->telegram->messagesGetFullChat(chatId);
+            {
+                if (p->dialog->peer()->classType() == Peer::typePeerChat)
+                    p->telegram->messagesGetFullChat(chatId);
+                else if (p->dialog->peer()->classType() == Peer::typePeerChannel)
+                    p->telegram->channelsGetFullChannel(chatId);
+            }
         }
         else
             dialogList << p->dialog->peer()->userId();

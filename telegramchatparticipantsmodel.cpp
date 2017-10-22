@@ -144,7 +144,10 @@ void TelegramChatParticipantsModel::refresh()
         dId = p->dialog->peer()->channelId();
     if(!dId)
         return;
-    p->telegram->messagesGetFullChat(dId);
+        if(p->dialog->peer()->classType() == Peer::typePeerChat)
+            p->telegram->messagesGetFullChat(dId);
+        else
+            p->telegram->channelsGetFullChannel(dId);
 
     p->refreshing = true;
     Q_EMIT refreshingChanged();

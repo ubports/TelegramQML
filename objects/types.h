@@ -3741,6 +3741,7 @@ public:
         _photo = new ChatPhotoObject(another.photo(), this);
         _left = another.left();
         _classType = another.classType();
+        _accessHash = another.accessHash();
 
     }
     ChatObject(QObject *parent = 0) :
@@ -3874,6 +3875,8 @@ public:
         Q_EMIT leftChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
+        _accessHash = another.accessHash();
+        Q_EMIT accessHashChanged();
 
     }
 
@@ -5775,5 +5778,91 @@ private:
 };
 
 Q_DECLARE_METATYPE(StickerPackObject*)
+
+
+/*
+    void setClassType(InputChannelClassType classType);
+    InputChannelClassType classType() const;
+ */
+class TELEGRAMQMLSHARED_EXPORT InputChannelObject : public TqObject
+{
+    Q_OBJECT
+    Q_PROPERTY(qint32 channelId READ channelId WRITE setChannelId NOTIFY channelIdChanged)
+    Q_PROPERTY(qint64 accessHash READ accessHash WRITE setAccessHash NOTIFY accessHashChanged)
+    Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+
+public:
+    InputChannelObject(const InputChannel & another, QObject *parent = 0) : TqObject(parent){
+        (void)another;
+        _channelId = another.channelId();
+        _accessHash = another.accessHash();
+       _classType = another.classType();
+
+    }
+    InputChannelObject(QObject *parent = 0) : TqObject(parent){}
+   ~InputChannelObject(){}
+
+    qint32 channelId() const {
+       return _channelId;
+    }
+
+    void setChannelId(qint32 value) {
+        if( value == _channelId )
+            return;
+        _channelId = value;
+        Q_EMIT channelIdChanged();
+        Q_EMIT changed();
+    }
+
+    qint64 accessHash() const {
+        return _accessHash;
+    }
+
+    void setAccessHash(qint64 value) {
+        if( value == _accessHash )
+            return;
+        _accessHash = value;
+        Q_EMIT accessHashChanged();
+        Q_EMIT changed();
+    }
+
+    quint32 classType() const {
+        return _classType;
+    }
+
+    void setClassType(quint32 value) {
+        if( value == _classType )
+            return;
+        _classType = value;
+        Q_EMIT classTypeChanged();
+        Q_EMIT changed();
+    }
+
+
+    void operator= ( const InputChannel & another) {
+        _channelId = another.channelId();
+        Q_EMIT channelIdChanged();
+        _accessHash = another.accessHash();
+        Q_EMIT accessHashChanged();
+        _classType = another.classType();
+        Q_EMIT classTypeChanged();
+
+    }
+
+Q_SIGNALS:
+    void changed();
+    void channelIdChanged();
+    void accessHashChanged();
+    void classTypeChanged();
+
+private:
+    qint32 _channelId;
+    qint64 _accessHash;
+    quint32 _classType;
+
+};
+
+Q_DECLARE_METATYPE(InputChannelObject*)
+
 
 #endif //TELEGRAMQMLTYPEOBJECT_H

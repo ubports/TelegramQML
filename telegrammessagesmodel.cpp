@@ -211,7 +211,7 @@ void TelegramMessagesModel::refresh()
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
     if(p->dialog->peer()->userId() != NewsLetterDialog::cutegramId())
-        tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0 );
+        tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
 
     p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
 }

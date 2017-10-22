@@ -353,6 +353,8 @@ public Q_SLOTS:
 
     void messagesGetFullChat(qint32 chatId);
 
+    void channelsGetFullChannel(qint32 channelId, qint64 accessHash = 0);
+
     void installStickerSet(const QString &shortName);
     void uninstallStickerSet(const QString &shortName);
     void getStickerSet(const QString &shortName);

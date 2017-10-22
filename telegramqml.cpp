@@ -1591,7 +1591,12 @@ InputPeer TelegramQml::getInputPeer(qint64 peerId)
     if(inputPeerType == InputPeer::typeInputPeerChat)
         peer.setChatId(peerId);
     else if(inputPeerType == InputPeer::typeInputPeerChannel)
+    {
         peer.setChannelId(peerId);
+        ChatObject *chat = p->chats.value(peerId);
+        if(chat)
+            peer.setAccessHash(chat->accessHash());
+    }
     else
         peer.setUserId(peerId);
     UserObject *user = p->users.value(peerId);
@@ -2102,6 +2107,17 @@ void TelegramQml::messagesGetFullChat(qint32 chatId)
         return;
 
     p->telegram->messagesGetFullChat(chatId);
+}
+
+void TelegramQml::channelsGetFullChannel(qint32 channelId, qint64 accessHash)
+{
+    if(!p->telegram)
+        return;
+
+    InputChannel channel(InputChannel::typeInputChannel);
+    channel.setChannelId(channelId);
+    channel.setAccessHash(accessHash);
+    p->telegram->channelsGetFullChannel(channel);
 }
 
 void TelegramQml::installStickerSet(const QString &shortName)
@@ -2806,6 +2822,8 @@ void TelegramQml::try_init()
     ASSERT(connect( p->telegram, &Telegram::contactsGetContactsAnswer, this, &TelegramQml::contactsGetContacts_slt));
 
     ASSERT(connect( p->telegram, &Telegram::channelsGetDialogsAnswer, this, &TelegramQml::channelsGetDialogs_slt));
+    ASSERT(connect( p->telegram, &Telegram::channelsGetFullChannelAnswer, this, &TelegramQml::messagesGetFullChat_slt));
+    ASSERT(connect( p->telegram, &Telegram::channelsGetImportantHistoryAnswer, this, &TelegramQml::messagesGetHistory_slt));
 
     ASSERT(connect( p->telegram, &Telegram::updates, this, &TelegramQml::updates_slt));
     ASSERT(connect( p->telegram, &Telegram::updatesCombined, this, &TelegramQml::updatesCombined_slt));
