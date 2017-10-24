@@ -1985,9 +1985,17 @@ void TelegramQml::messagesDeleteHistory(qint64 peerId, bool deleteChat, bool use
         deleteChat = p->deleteChatIds.contains(peerId);
     }
 
+    const InputPeer & input = getInputPeer(peerId);
+
     if (p->dialogs.value(peerId)->unreadCount() > 0) {
         // Mark history as read before deleting history.
-        qint64 requestId = messagesReadHistory(peerId);//, QDateTime::currentDateTime().toTime_t());
+        qint64 requestId = 0;
+        if(input.classType() == InputPeer::typeInputPeerChannel)
+        {
+            requestId = channelsReadHistory(input.channelId(), input.accessHash());
+        } else {
+            requestId = messagesReadHistory(peerId);//, QDateTime::currentDateTime().toTime_t());
+        }
         if (requestId) {
             // Require follow up after messagesReadHistory completes.
             p->delete_history_requests.insert(requestId, peerId);
@@ -1995,11 +2003,14 @@ void TelegramQml::messagesDeleteHistory(qint64 peerId, bool deleteChat, bool use
         return;
     }
 
-    bool isChat = p->chats.contains(peerId);
-
-    if (isChat && deleteChat && !userRemoved) {
+    if (p->chats.contains(peerId) && deleteChat && !userRemoved) {
         // Leave group chat before deleting.
-        messagesGetFullChat(peerId);
+        if(input.classType() == InputPeer::typeInputPeerChannel)
+        {
+            channelsGetFullChannel(input.channelId(), input.accessHash());
+        } else {
+            messagesGetFullChat(peerId);
+        }
     } else if (p->encchats.contains(peerId)) {
         if (deleteChat == false) {
             qWarning() << "WARNING: Deleting secret chat history without chat removal is not yet unsupported";
@@ -2011,8 +2022,7 @@ void TelegramQml::messagesDeleteHistory(qint64 peerId, bool deleteChat, bool use
         // Is there a way we can fix this in TelegramQML?
         messagesDiscardEncryptedChat(peerId);
     } else {
-        const InputPeer & peer = getInputPeer(peerId);
-        qint64 requestId = p->telegram->messagesDeleteHistory(peer);
+        qint64 requestId = p->telegram->messagesDeleteHistory(input);
         p->delete_history_requests.insert(requestId, peerId);
     }
 }
@@ -2039,6 +2049,22 @@ void TelegramQml::messagesSetTyping(qint64 peerId, bool stt)
         p->telegram->messagesSetTyping(peer, action);
     }
 
+}
+
+qint64 TelegramQml::channelsReadHistory(qint64 channelId, qint64 accessHash)
+{
+    if(!p->telegram)
+        return 0;
+    if(!channelId)
+        return 0;
+
+    qint64 result;
+    InputChannel channel(InputChannel::typeInputChannel);
+    channel.setChannelId(channelId);
+    channel.setAccessHash(accessHash);
+    result = p->telegram->channelsReadHistory(channel, 0);
+    p->read_history_requests.insert(result, channelId);
+    return result;
 }
 
 qint64 TelegramQml::messagesReadHistory(qint64 peerId, qint32 maxDate)

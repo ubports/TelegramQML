@@ -211,7 +211,14 @@ void TelegramMessagesModel::refresh()
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
     if(p->dialog->peer()->userId() != NewsLetterDialog::cutegramId())
-        tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
+        if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        {
+            InputChannel channel(InputChannel::typeInputChannel);
+            channel.setChannelId(peer.channelId());
+            channel.setAccessHash(peer.accessHash());
+            tgObject->channelsGetImportantHistory(channel, 0, 0, p->stepCount, p->maxId, 0);
+        } else
+            tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
 
     p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
 }
@@ -298,7 +305,13 @@ void TelegramMessagesModel::setReaded()
     }
 
     if(p->telegram->connected()) {
-        p->telegram->messagesReadHistory(peerId(), message->date());
+        if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        {
+            const InputPeer & input = p->telegram->getInputPeer(p->dialog->peer()->channelId());
+            p->telegram->channelsReadHistory(input.channelId(), input.accessHash());
+        } else {
+            p->telegram->messagesReadHistory(peerId(), message->date());
+        }
     }
 }
 

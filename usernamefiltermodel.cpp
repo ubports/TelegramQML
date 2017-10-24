@@ -151,7 +151,10 @@ void UserNameFilterModel::listChanged()
                 if (p->dialog->peer()->classType() == Peer::typePeerChat)
                     p->telegram->messagesGetFullChat(chatId);
                 else if (p->dialog->peer()->classType() == Peer::typePeerChannel)
-                    p->telegram->channelsGetFullChannel(chatId);
+                {
+                    const InputPeer & peer = p->telegram->getInputPeer(chatId);
+                    p->telegram->channelsGetFullChannel(peer.channelId(), peer.accessHash());
+                }
             }
         }
         else

@@ -347,13 +347,15 @@ public Q_SLOTS:
     void messagesSetTyping(qint64 peerId, bool stt);
     qint64 messagesReadHistory(qint64 peerId, qint32 maxDate = 0);
 
+
     void messagesCreateEncryptedChat(qint64 userId);
     void messagesAcceptEncryptedChat(qint32 chatId);
     qint64 messagesDiscardEncryptedChat(qint32 chatId, bool force = false);
 
     void messagesGetFullChat(qint32 chatId);
 
-    void channelsGetFullChannel(qint32 channelId, qint64 accessHash = 0);
+    void channelsGetFullChannel(qint32 channelId, qint64 accessHash);
+    qint64 channelsReadHistory(qint64 channelId, qint64 accessHash);
 
     void installStickerSet(const QString &shortName);
     void uninstallStickerSet(const QString &shortName);
