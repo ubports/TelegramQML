@@ -4619,6 +4619,7 @@ void TelegramQml::insertUpdate(const Update &update)
         }
         break;
 
+    case Update::typeUpdateNewChannelMessage:
     case Update::typeUpdateNewMessage:
         insertMessage(update.message(), false, false, true);
         timerUpdateDialogs(3000);
@@ -4746,6 +4747,7 @@ void TelegramQml::insertUpdate(const Update &update)
         timerUpdateDialogs();
         break;
 
+    case Update::typeUpdateReadChannelInbox:
     case Update::typeUpdateReadHistoryInbox:
     case Update::typeUpdateReadHistoryOutbox:
     {
@@ -4760,6 +4762,10 @@ void TelegramQml::insertUpdate(const Update &update)
                     obj->setUnread(false);
             }
     }
+        break;
+    default:
+
+        qWarning() << "Received unhandled updates type: " << update.classType();
         break;
     }
 }
