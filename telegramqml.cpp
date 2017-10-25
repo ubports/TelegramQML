@@ -2007,7 +2007,7 @@ void TelegramQml::messagesDeleteHistory(qint64 peerId, bool deleteChat, bool use
         // Leave group chat before deleting.
         if(input.classType() == InputPeer::typeInputPeerChannel)
         {
-            channelsGetFullChannel(input.channelId(), input.accessHash());
+            channelsGetFullChannel(peerId);
         } else {
             messagesGetFullChat(peerId);
         }
@@ -2051,7 +2051,7 @@ void TelegramQml::messagesSetTyping(qint64 peerId, bool stt)
 
 }
 
-qint64 TelegramQml::channelsReadHistory(qint64 channelId, qint64 accessHash)
+qint64 TelegramQml::channelsReadHistory(qint32 channelId, qint64 accessHash)
 {
     if(!p->telegram)
         return 0;
@@ -2062,6 +2062,7 @@ qint64 TelegramQml::channelsReadHistory(qint64 channelId, qint64 accessHash)
     InputChannel channel(InputChannel::typeInputChannel);
     channel.setChannelId(channelId);
     channel.setAccessHash(accessHash);
+    qWarning() << "channelsReadHistory: Channel Id: " << channelId << ", accessHash: " << accessHash;
     result = p->telegram->channelsReadHistory(channel, 0);
     p->read_history_requests.insert(result, channelId);
     return result;
@@ -2135,14 +2136,16 @@ void TelegramQml::messagesGetFullChat(qint32 chatId)
     p->telegram->messagesGetFullChat(chatId);
 }
 
-void TelegramQml::channelsGetFullChannel(qint32 channelId, qint64 accessHash)
+void TelegramQml::channelsGetFullChannel(qint32 peerId)
 {
     if(!p->telegram)
         return;
 
+    const InputPeer & input = getInputPeer(peerId);
     InputChannel channel(InputChannel::typeInputChannel);
-    channel.setChannelId(channelId);
-    channel.setAccessHash(accessHash);
+    channel.setChannelId(input.channelId());
+    channel.setAccessHash(input.accessHash());
+    qWarning() << "channelsGetFullChannel: Channel Id: " << input.channelId() << ", accessHash: " << input.accessHash();
     p->telegram->channelsGetFullChannel(channel);
 }
 

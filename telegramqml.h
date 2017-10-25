@@ -354,8 +354,8 @@ public Q_SLOTS:
 
     void messagesGetFullChat(qint32 chatId);
 
-    void channelsGetFullChannel(qint32 channelId, qint64 accessHash);
-    qint64 channelsReadHistory(qint64 channelId, qint64 accessHash);
+    void channelsGetFullChannel(qint32 peerId);
+    qint64 channelsReadHistory(qint32 channelId, qint64 accessHash);
 
     void installStickerSet(const QString &shortName);
     void uninstallStickerSet(const QString &shortName);

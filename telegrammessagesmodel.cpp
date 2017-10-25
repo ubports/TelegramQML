@@ -387,7 +387,7 @@ qint64 TelegramMessagesModel::peerId() const
 {
     if(p->dialog->peer()->classType()==Peer::typePeerChannel)
         return p->dialog->peer()->channelId();
-    else if(p->dialog->peer()->classType()==Peer::typePeerUser)
+    else if(p->dialog->peer()->classType()==Peer::typePeerChat)
         return p->dialog->peer()->chatId();
     else
         return p->dialog->peer()->userId();

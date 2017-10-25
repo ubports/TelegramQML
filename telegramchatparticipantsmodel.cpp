@@ -144,13 +144,12 @@ void TelegramChatParticipantsModel::refresh()
         dId = p->dialog->peer()->channelId();
     if(!dId)
         return;
-        if(p->dialog->peer()->classType() == Peer::typePeerChat)
-            p->telegram->messagesGetFullChat(dId);
-        else
-        {
-            const InputPeer & peer = p->telegram->getInputPeer(dId);
-            p->telegram->channelsGetFullChannel(peer.channelId(), peer.accessHash());
-        }
+    if(p->dialog->peer()->classType() == Peer::typePeerChat)
+        p->telegram->messagesGetFullChat(dId);
+    else
+    {
+        p->telegram->channelsGetFullChannel(dId);
+    }
 
     p->refreshing = true;
     Q_EMIT refreshingChanged();
