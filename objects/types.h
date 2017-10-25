@@ -3274,6 +3274,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageActionObject : public TqObject
     Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged)
     Q_PROPERTY(QList<qint32> users READ users WRITE setUsers NOTIFY usersChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+    Q_PROPERTY(MessageActionEnum messageActionEnum READ messageActionEnum NOTIFY messageActionEnumChanged)
 
 public:
     MessageActionObject(const MessageAction & another, QObject *parent = 0) : TqObject(parent){
@@ -3372,9 +3373,25 @@ public:
             return;
         _classType = value;
         Q_EMIT classTypeChanged();
+        Q_EMIT messageActionEnumChanged();
         Q_EMIT changed();
     }
 
+    enum MessageActionEnum {
+        Empty,
+        ChatCreate,
+        ChatEditTitle,
+        ChatEditPhoto,
+        ChatDeletePhoto,
+        ChatAddUser,
+        ChatDeleteUser,
+        ChatJoinedByLink,
+        ChannelCreate,
+        ChatMigrateTo,
+        ChannelMigrateFrom
+    };
+    Q_ENUM(MessageActionEnum)
+    MessageActionEnum messageActionEnum() const;
 
     void operator= ( const MessageAction & another) {
         _userId = another.userId();
@@ -3387,7 +3404,7 @@ public:
         Q_EMIT usersChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
-
+        Q_EMIT messageActionEnumChanged();
     }
 
 Q_SIGNALS:
@@ -3399,6 +3416,7 @@ Q_SIGNALS:
     void titleChanged();
     void usersChanged();
     void classTypeChanged();
+    void messageActionEnumChanged();
 
 private:
     QString _address;
@@ -3409,6 +3427,47 @@ private:
     QList<qint32> _users;
     quint32 _classType;
 
+    MessageActionEnum messageActionEnum()
+    {
+        switch(static_cast<MessageAction::MessageActionClassType>(_classType))
+        {
+            case MessageAction::MessageActionClassType::typeMessageActionEmpty:
+                return MessageActionEnum::Empty;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatCreate:
+                return MessageActionEnum::ChatCreate;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatEditTitle:
+                return MessageActionEnum::ChatEditTitle;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatEditPhoto:
+                return MessageActionEnum::ChatEditPhoto;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatDeletePhoto:
+                return MessageActionEnum::ChatDeletePhoto;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatAddUser:
+                return MessageActionEnum::ChatAddUser;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatDeleteUser:
+                return MessageActionEnum::ChatDeleteUser;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatJoinedByLink:
+                return MessageActionEnum::ChatJoinedByLink;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChannelCreate:
+                return MessageActionEnum::ChannelCreate;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChatMigrateTo:
+                return MessageActionEnum::ChatMigrateTo;
+            break;
+            case MessageAction::MessageActionClassType::typeMessageActionChannelMigrateFrom:
+                return MessageActionEnum::ChannelMigrateFrom;
+            break;
+            default:
+                Q_ASSERT(false);
+        }
+    }
 };
 
 Q_DECLARE_METATYPE(MessageActionObject*)
