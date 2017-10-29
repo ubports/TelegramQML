@@ -53,7 +53,6 @@ SOURCES += \
     $$PWD/telegrammessagesmodel.cpp \
     $$PWD/telegramthumbnailer.cpp \
     $$PWD/telegramthumbnailercore.cpp \
-    $$PWD/newsletterdialog.cpp \
     $$PWD/userdata.cpp \
     $$PWD/telegramqmlinitializer.cpp \
     $$PWD/tqobject.cpp \
@@ -91,7 +90,6 @@ HEADERS += \
     $$PWD/objects/types.h \
     $$PWD/telegramqml_macros.h \
     $$PWD/telegramqml_global.h \
-    $$PWD/newsletterdialog.h \
     $$PWD/telegramqmlinitializer.h \
     $$PWD/tqobject.h \
     $$PWD/stickersmodel.h \

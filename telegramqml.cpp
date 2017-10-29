@@ -20,7 +20,6 @@
 #include "userdata.h"
 #include "database.h"
 #include "telegramsearchmodel.h"
-#include "newsletterdialog.h"
 #include "telegrammessagesmodel.h"
 #include "telegramthumbnailer.h"
 #include "objects/types.h"
@@ -501,11 +500,6 @@ DatabaseAbstractEncryptor *TelegramQml::encrypter() const
     return p->encrypter;
 }
 
-QObject *TelegramQml::newsLetterDialog() const
-{
-    return p->newsletter_dlg;
-}
-
 void TelegramQml::setAutoAcceptEncrypted(bool stt)
 {
     if(p->autoAcceptEncrypted == stt)
@@ -586,11 +580,6 @@ qint64 TelegramQml::me() const
 UserObject *TelegramQml::myUser() const
 {
     return p->users.value(me());
-}
-
-qint64 TelegramQml::cutegramId() const
-{
-    return NewsLetterDialog::cutegramId();
 }
 
 bool TelegramQml::online() const
@@ -1857,18 +1846,6 @@ void TelegramQml::deleteMessages(QList<int> msgIds)
             Q_EMIT messagesChanged(false);
         }
     }
-}
-
-void TelegramQml::deleteCutegramDialog()
-{
-    if( !p->telegram )
-        return;
-
-    const qint64 dId = cutegramId();
-    p->database->deleteDialog(dId);
-    insertToGarbeges(p->dialogs.value(dId));
-
-    Q_EMIT dialogsChanged(false);
 }
 
 void TelegramQml::messagesCreateChat(const QList<int> &users, const QString &topic)
@@ -3309,8 +3286,6 @@ void TelegramQml::messagesSendMedia_slt(qint64 id, const UpdatesType &updates)
 
     MessageObject* msg;
     msg = p->messages.value(old_msgId);
-    if (!msg)
-        msg = p->channel_messages.value(old_msgId);
     insertToGarbeges(msg);
     insertUpdates(updates);
     timerUpdateDialogs(3000);

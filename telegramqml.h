@@ -39,7 +39,6 @@ class SecretChat;
 class DecryptedMessage;
 class PhotoSize;
 class TelegramSearchModel;
-class NewsLetterDialog;
 class Database;
 class UserData;
 class TelegramMessagesModel;
@@ -84,7 +83,6 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(QString downloadPath  READ downloadPath  WRITE setDownloadPath  NOTIFY downloadPathChanged )
     Q_PROPERTY(QString tempPath      READ tempPath      WRITE setTempPath      NOTIFY tempPathChanged     )
 
-    Q_PROPERTY(QObject* newsLetterDialog READ newsLetterDialog WRITE setNewsLetterDialog NOTIFY newsLetterDialogChanged     )
     Q_PROPERTY(DatabaseAbstractEncryptor* encrypter READ encrypter WRITE setEncrypter NOTIFY encrypterChanged)
     Q_PROPERTY(bool autoAcceptEncrypted READ autoAcceptEncrypted WRITE setAutoAcceptEncrypted NOTIFY autoAcceptEncryptedChanged)
     Q_PROPERTY(bool autoCleanUpMessages READ autoCleanUpMessages WRITE setAutoCleanUpMessages NOTIFY autoCleanUpMessagesChanged)
@@ -100,7 +98,6 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(UserData*   userData    READ userData    NOTIFY userDataChanged)
     Q_PROPERTY(Database*   database    READ database    NOTIFY databaseChanged)
     Q_PROPERTY(qint64      me          READ me          NOTIFY meChanged)
-    Q_PROPERTY(qint64      cutegramId  READ cutegramId  NOTIFY fakeSignal)
     Q_PROPERTY(UserObject* myUser      READ myUser      NOTIFY myUserChanged)
     Q_PROPERTY(QString     homePath    READ homePath    NOTIFY fakeSignal)
     Q_PROPERTY(QString     currentPath READ currentPath NOTIFY fakeSignal)
@@ -179,9 +176,6 @@ public:
     void setEncrypter(DatabaseAbstractEncryptor *encrypter);
     DatabaseAbstractEncryptor *encrypter() const;
 
-    void setNewsLetterDialog(QObject *dialog);
-    QObject *newsLetterDialog() const;
-
     void setAutoAcceptEncrypted(bool stt);
     bool autoAcceptEncrypted() const;
 
@@ -199,7 +193,6 @@ public:
     Telegram *telegram() const;
     qint64 me() const;
     UserObject *myUser() const;
-    qint64 cutegramId() const;
 
     bool online() const;
     void setOnline( bool stt );
@@ -336,7 +329,6 @@ public Q_SLOTS:
     void forwardMessages(QList<int> msgIds, qint64 toPeerId );
     void deleteMessages(QList<int> msgIds );
 
-    void deleteCutegramDialog();
     void messagesCreateChat(const QList<int> &users, const QString & topic );
     void messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLimit = 0);
     qint64 messagesDeleteChatUser(qint64 chatId, qint64 userId);
@@ -416,7 +408,6 @@ Q_SIGNALS:
     void autoUpdateChanged();
     void encryptedChatsChanged();
     void uploadingProfilePhotoChanged();
-    void newsLetterDialogChanged();
     void installedStickersChanged();
     void stickerInstalled(const QString &shortName, bool ok);
     void stickerUninstalled(const QString &shortName, bool ok);
