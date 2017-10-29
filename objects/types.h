@@ -3267,6 +3267,7 @@ Q_DECLARE_METATYPE(WallPaperObject*)
 class TELEGRAMQMLSHARED_EXPORT MessageActionObject : public TqObject
 {
     Q_OBJECT
+    Q_ENUMS(MessageActionEnum)
     Q_PROPERTY(QString address READ address WRITE setAddress NOTIFY addressChanged)
     Q_PROPERTY(qint32 userId READ userId WRITE setUserId NOTIFY userIdChanged)
     Q_PROPERTY(qint32 inviterId READ inviterId WRITE setInviterId NOTIFY inviterIdChanged)
@@ -3390,7 +3391,6 @@ public:
         ChatMigrateTo,
         ChannelMigrateFrom
     };
-    Q_ENUM(MessageActionEnum)
     MessageActionEnum messageActionEnum() const;
 
     void operator= ( const MessageAction & another) {
