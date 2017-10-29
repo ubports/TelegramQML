@@ -379,6 +379,7 @@ public Q_SLOTS:
 
     void updatesGetState();
     void updatesGetDifference();
+    void updatesGetChannelDifference(qint32 channelId, qint64 accessHash);
 
     bool sleep();
     bool wake();
@@ -520,10 +521,6 @@ private Q_SLOTS:
     void messagesGetMessages_slt(qint64 id, const MessagesMessages &result);
 
     void messagesSendMedia_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendPhoto_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendVideo_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendAudio_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendDocument_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardMedia_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardPhoto_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardVideo_slt(qint64 id, const UpdatesType &updates);
@@ -567,6 +564,7 @@ private Q_SLOTS:
     void updates_slt(const QList<Update> & udts, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seq);
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
+    void updatesGetChannelDifference_slt(qint64 msgId, const UpdatesChannelDifference &result);
     void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
 
     void uploadGetFile_slt(qint64 id, const StorageFileType & type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total);
@@ -574,8 +572,6 @@ private Q_SLOTS:
     void uploadCancelFile_slt(qint64 fileId, bool cancelled);
 
     void fatalError_slt();
-
-    void incomingAsemanMessage(const Message &msg, const Dialog &dialog);
 
 private:
     void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false);

@@ -194,12 +194,15 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
                   "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
 
     query.bindValue(":id",message.id() );
+    qint32 toId = 0;
+
     if (message.toId().classType()==Peer::typePeerChannel)
-        query.bindValue(":toId", message.toId().channelId());
+        toId =  message.toId().channelId();
     else if (message.toId().classType()==Peer::typePeerChat)
-        query.bindValue(":toId", message.toId().chatId());
+        toId =  message.toId().chatId();
     else
-        query.bindValue(":toId", message.toId().userId());
+        toId =  message.toId().userId();
+        query.bindValue(":toId", toId);
     query.bindValue(":toPeerType",message.toId().classType() );
     query.bindValue(":unread", (message.flags()&0x1?true:false) );
     query.bindValue(":fromId",message.fromId() );
@@ -236,6 +239,7 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":mediaVideo",media.video().id() );
     query.bindValue(":mediaAudio",media.audio().id() );
 
+    qWarning() << "Inserting message " << message.id() << ", recipient " << toId;
     bool res = query.exec();
     if(!res)
     {
