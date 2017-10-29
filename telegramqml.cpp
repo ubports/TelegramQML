@@ -1735,6 +1735,7 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
         return 0;
 
     DialogObject *dlg = p->dialogs.value(dId);
+    InputPeer peer = getInputPeer(dId);
 
     qint64 sendId;
 
@@ -1749,14 +1750,13 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
     }
     else
     {
-        InputPeer peer = getInputPeer(dId);
-        auto entities = QList<MessageEntity>();
 
+        auto entities = QList<MessageEntity>();
         sendId = p->telegram->messagesSendMessage(true, false, peer, replyTo, msg, p->msg_send_random_id, ReplyMarkup(), entities);
     }
 
+    message.setId(sendId);
     insertMessage(message, (dlg && dlg->encrypted()), false, true);
-
     MessageObject *msgObj = p->messages.value(message.id());
     msgObj->setSent(false);
 
@@ -2448,11 +2448,11 @@ Message TelegramQml::newMessage(qint64 dId)
         to_peer = encPeer;
     }
 
-    static qint32 msgId = INT_MAX-100000;
-    msgId++;
+//    static qint32 msgId = INT_MAX-100000;
+//    msgId++;
 
     Message message(Message::typeMessage);
-    message.setId(msgId);
+    message.setId(generateRandomId());
     message.setDate( QDateTime::currentDateTime().toTime_t() );
     message.setFromId( p->telegram->ourId() );
     message.setToId(to_peer);
@@ -3234,10 +3234,19 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
         did = msgObj->out()? msg.toId().userId() : msg.fromId();
 
     insertToGarbeges(p->messages.value(old_msgId));
-    insertMessage(msg);
-    timerUpdateDialogs(3000);
+    if(msg.id() != 0)
+    {
+        insertMessage(msg);
+        timerUpdateDialogs(3000);
 
-    Q_EMIT messageSent(id, p->messages.value(result.id()));
+        Q_EMIT messageSent(id, p->messages.value(result.id()));
+    }
+    else
+    {
+        auto deleteMsg = QList<int>();
+        deleteMsg.append(old_msgId);
+        deleteMessages(deleteMsg);
+    }
     Q_EMIT messagesSent(1);
 }
 
