@@ -36,7 +36,6 @@ void TelegramQmlInitializer::init(const char *uri)
     qmlRegisterType<StickerPackObject>(uri, 1, 0, "StickerPack");
     qmlRegisterType<DocumentAttributeObject>(uri, 1, 0, "DocumentAttribute");
     qmlRegisterType<BackgroundManager>(uri, 1, 0, "BackgroundManager");
-    qmlRegisterType<ChatParticipantList>(uri, 1, 0, "ChatParticipantList");
     qmlRegisterType<Database>(uri, 1, 0, "Database");
     qmlRegisterType<DialogFilesModel>(uri, 1, 0, "DialogFilesModel");
     qmlRegisterType<MP3ConverterEngine>(uri, 1, 0, "MP3ConverterEngine");
