@@ -759,7 +759,7 @@ void DatabaseCore::update_db()
         db_version = 5;
     }
 
-    //Db script for API-41
+    //Db scripts for API-41
     if (db_version == 5)
     {
         QSqlQuery query(db);
@@ -767,6 +767,52 @@ void DatabaseCore::update_db()
         query.exec();
 
         db_version = 6;
+    }
+
+    if (db_version == 6)
+    {
+        QSqlQuery query(db);
+        query.prepare("PRAGMA foreign_keys=off;"
+                      "BEGIN TRANSACTION;"
+                      "ALTER TABLE messages RENAME TO old_messages;"
+                      "CREATE TABLE messages ("
+                      "`id`	BIGINT NOT NULL,"
+                      "`toId`	BIGINT NOT NULL,"
+                      "`toPeerType`	BIGINT NOT NULL,"
+                      "`unread`	BOOLEAN NOT NULL,"
+                      "`fromId`	BIGINT NOT NULL,"
+                      "`out`	BOOLEAN NOT NULL,"
+                      "`date`	BIGINT NOT NULL,"
+                      "`media`	BIGINT,"
+                      "`fwdDate`	BIGINT,"
+                      "`fwdFromId`	BIGINT,"
+                      "`message`	TEXT,"
+                      "`actionAddress`	TEXT,"
+                      "`actionUserId`	BIGINT,"
+                      "`actionPhoto`	BIGINT,"
+                      "`actionTitle`	TEXT,"
+                      "`actionUsers`	TEXT,"
+                      "`actionType`	BIGINT NOT NULL,"
+                      "`mediaAudio`	BIGINT,"
+                      "`mediaLastName`	TEXT,"
+                      "`mediaFirstName`	TEXT,"
+                      "`mediaPhoneNumber`	TEXT,"
+                      "`mediaDocument`	BIGINT,"
+                      "`mediaGeo`	BIGINT,"
+                      "`mediaPhoto`	BIGINT,"
+                      "`mediaUserId`	BIGINT,"
+                      "`mediaVideo`	BIGINT,"
+                      "`mediaType`	BIGINT,"
+                      "`replyToMsgId`	BIGINT,"
+                      "`fwdFromPeerType`	BIGINT,"
+                      "PRIMARY KEY(id,toId);"
+                      "INSERT INTO messages SELECT * FROM old_messages;"
+                      "COMMIT;"
+                      "PRAGMA foreign_keys=on;"
+                      );
+        query.exec();
+
+        db_version = 7;
     }
 
     setValue("version", QString::number(db_version) );

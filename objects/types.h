@@ -5152,7 +5152,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(MessageMediaObject* media READ media WRITE setMedia NOTIFY mediaChanged)
     Q_PROPERTY(qint32 fwdDate READ fwdDate WRITE setFwdDate NOTIFY fwdDateChanged)
     Q_PROPERTY(PeerObject* fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
-    Q_PROPERTY(qint32 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
+    Q_PROPERTY(qint64 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
@@ -5345,11 +5345,11 @@ public:
         Q_EMIT changed();
     }
 
-    qint32 replyToMsgId() const {
+    qint64 replyToMsgId() const {
         return _replyToMsgId;
     }
 
-    void setReplyToMsgId(qint32 replyToMsgId) {
+    void setReplyToMsgId(qint64 replyToMsgId) {
         if( replyToMsgId == _replyToMsgId )
             return;
         _replyToMsgId = replyToMsgId;
