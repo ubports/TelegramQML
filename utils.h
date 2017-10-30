@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef QMLUTILS_H
+#define QMLUTILS_H
 
 #include <QObject>
 #include <QStringList>
@@ -7,7 +7,7 @@
 #include <QMutex>
 #include <QtGlobal>
 
-class Utils
+class QmlUtils
 {
 public:
     static qint64 getUnifiedMessageKey(qint32 messageId, qint32 peerId);
@@ -15,4 +15,4 @@ public:
     static qint32 getSeparatePeerId(qint64 unifiedKey);
 };
 
-#endif // UTILS_H
+#endif // QMLUTILS_H

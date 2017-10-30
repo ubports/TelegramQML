@@ -282,7 +282,7 @@ void TelegramMessagesModel::setReaded()
         return;
 
     p->dialog->setUnreadCount(0);
-    qint32 topMessageId = p->dialog->topMessage();
+    qint64 topMessageId = p->dialog->topMessage();
     if (topMessageId == 0) return;
 
     const MessageObject* message = p->telegram->message(topMessageId);

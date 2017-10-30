@@ -3972,11 +3972,11 @@ class TELEGRAMQMLSHARED_EXPORT DialogObject : public TqObject
     Q_OBJECT
     Q_PROPERTY(PeerObject* peer READ peer WRITE setPeer NOTIFY peerChanged)
     Q_PROPERTY(PeerNotifySettingsObject* notifySettings READ notifySettings WRITE setNotifySettings NOTIFY notifySettingsChanged)
-    Q_PROPERTY(qint32 topMessage READ topMessage WRITE setTopMessage NOTIFY topMessageChanged)
+    Q_PROPERTY(qint64 topMessage READ topMessage WRITE setTopMessage NOTIFY topMessageChanged)
     Q_PROPERTY(qint32 unreadCount READ unreadCount WRITE setUnreadCount NOTIFY unreadCountChanged)
     Q_PROPERTY(bool encrypted READ encrypted WRITE setEncrypted NOTIFY encryptedChanged)
     Q_PROPERTY(QStringList typingUsers READ typingUsers WRITE setTypingUsers NOTIFY typingUsersChanged)
-    Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+    Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
 public:
     DialogObject(const Dialog & another, QObject *parent = 0) : TqObject(parent){
@@ -4019,11 +4019,11 @@ public:
         Q_EMIT changed();
     }
 
-    qint32 topMessage() const {
-        return _topMessage;
+    qint64 topMessage() const {
+        return QmlUtils::getUnifiedMessageKey(_topMessage, _peer->channelId());
     }
 
-    void setTopMessage(qint32 value) {
+    void setTopMessage(qint64 value) {
         if( value == _topMessage )
             return;
         _topMessage = value;
@@ -4109,7 +4109,7 @@ Q_SIGNALS:
 private:
     PeerObject* _peer;
     PeerNotifySettingsObject* _notifySettings;
-    qint32 _topMessage;
+    qint64 _topMessage;
     qint32 _unreadCount;
     bool _encrypted;
     QStringList _typingUsers;
@@ -5175,7 +5175,7 @@ public:
         _replyToMsgId = another.replyToMsgId();
         _message = another.message();
         _classType = another.classType();
-        _unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
     }
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
@@ -5194,7 +5194,7 @@ public:
             return;
         _id = value;
         Q_EMIT idChanged();
-        unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
         Q_EMIT changed();
     }
@@ -5244,7 +5244,7 @@ public:
             return;
         _toId = value;
         Q_EMIT toIdChanged();
-        unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
         Q_EMIT changed();
     }
@@ -5414,7 +5414,7 @@ public:
         Q_EMIT messageChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
-        _unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
     }
 

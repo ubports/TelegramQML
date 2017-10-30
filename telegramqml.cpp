@@ -23,7 +23,7 @@
 #include "telegrammessagesmodel.h"
 #include "telegramthumbnailer.h"
 #include "objects/types.h"
-
+#include "utils.h"
 #include <secret/decrypter.h>
 #include <util/utils.h>
 #include <telegram.h>
@@ -159,7 +159,7 @@ public:
     QSet<qint64> deleteChatIds;
     QHash<qint64,qint64> blockRequests;
     QHash<qint64,qint64> unblockRequests;
-    QList<qint32> request_messages;
+    QList<qint64> request_messages;
     QMultiHash<qint64, qint64> pending_replies;
     QHash<qint64, QString> pending_stickers_uninstall;
     QHash<qint64, QString> pending_stickers_install;
@@ -1755,9 +1755,9 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
         sendId = p->telegram->messagesSendMessage(true, false, peer, replyTo, msg, p->msg_send_random_id, ReplyMarkup(), entities);
     }
 
-    message.setId(sendId);
     insertMessage(message, (dlg && dlg->encrypted()), false, true);
-    MessageObject *msgObj = p->messages.value(message.id());
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(message.id(), message.toId().channelId());
+    MessageObject *msgObj = p->messages.value(unifiedId);
     msgObj->setSent(false);
 
     p->pend_messages[sendId] = msgObj;
@@ -1832,11 +1832,17 @@ void TelegramQml::forwardMessages(QList<int> msgIds, qint64 toPeerId)
     p->telegram->messagesForwardMessages(false, InputPeer(), msgIds, randoms, toPeer);
 }
 
-void TelegramQml::deleteMessages(QList<int> msgIds)
+void TelegramQml::deleteMessages(QList<qint64> msgIds)
 {
-    p->telegram->messagesDeleteMessages( msgIds );
-    Q_FOREACH(int msgId, msgIds)
+
+    if(!p->telegram)
+        return;
+
+    QList<qint32> simpleIds;
+
+    Q_FOREACH(qint64 msgId, msgIds)
     {
+        simpleIds.append(QmlUtils::getSeparateMessageId(msgId));
         MessageObject *msgObj = p->messages.value(msgId);
         if(msgObj)
         {
@@ -1846,6 +1852,7 @@ void TelegramQml::deleteMessages(QList<int> msgIds)
             Q_EMIT messagesChanged(false);
         }
     }
+    p->telegram->messagesDeleteMessages(simpleIds);
 }
 
 void TelegramQml::messagesCreateChat(const QList<int> &users, const QString &topic)
@@ -2017,6 +2024,34 @@ qint64 TelegramQml::channelsReadHistory(qint32 channelId, qint64 accessHash)
     result = p->telegram->channelsReadHistory(channel, 0);
     p->read_history_requests.insert(result, channelId);
     return result;
+}
+
+void TelegramQml::channelsDeleteMessages(qint32 channelId, qint64 accessHash, QList<qint64> msgIds)
+{
+    if(!p->telegram)
+        return;
+    if(!channelId)
+        return;
+
+    QList<qint32> simpleIds;
+
+    Q_FOREACH(qint64 msgId, msgIds)
+    {
+        simpleIds.append(QmlUtils::getSeparateMessageId(msgId));
+        MessageObject *msgObj = p->messages.value(msgId);
+        if(msgObj)
+        {
+            p->database->deleteMessage(msgId);
+            insertToGarbeges(p->messages.value(msgId));
+
+            Q_EMIT messagesChanged(false);
+        }
+    }
+    InputChannel channel(InputChannel::typeInputChannel);
+    channel.setChannelId(channelId);
+    channel.setAccessHash(accessHash);
+    p->telegram->channelsDeleteMessages(channel, simpleIds);
+
 }
 
 qint64 TelegramQml::messagesReadHistory(qint64 peerId, qint32 maxDate)
@@ -2311,7 +2346,8 @@ qint64 TelegramQml::sendFile(qint64 dId, const QString &fpath, bool forceDocumen
 
     insertMessage(message, false, false, true);
 
-    MessageObject *msgObj = p->messages.value(message.id());
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(message.id(), message.toId().channelId());
+    MessageObject *msgObj = p->messages.value(unifiedId);
     msgObj->setSent(false);
 
     UploadObject *upload = msgObj->upload();
@@ -2598,14 +2634,14 @@ bool TelegramQml::wake()
 
 void TelegramQml::cleanUpMessages_prv()
 {
-    QSet<qint32> lockedMessages;
+    QSet<qint64> lockedMessages;
 
     /*! Find messages shouldn't be delete !*/
     Q_FOREACH(DialogObject *dlg, p->dialogs)
     {
-        qint32 msgId = dlg->topMessage();
+        qint64 msgId = dlg->topMessage();
         if(msgId)
-            lockedMessages.insert(msgId);
+            lockedMessages.insert(QmlUtils::getUnifiedMessageKey(msgId, dlg->peer()->channelId()));
     }
 
     Q_FOREACH(TelegramSearchModel *mdl, p->searchModels)
@@ -2679,9 +2715,9 @@ void TelegramQml::cleanUpMessages_prv()
     }
 
     Q_FOREACH(MessageObject *msg, p->messages)
-        if(!lockedMessages.contains(msg->id()))
+        if(!lockedMessages.contains(msg->unifiedId()))
         {
-            p->messages.remove(msg->id());
+            p->messages.remove(msg->unifiedId());
             msg->deleteLater();
         }
 
@@ -2691,26 +2727,45 @@ void TelegramQml::cleanUpMessages_prv()
 
 bool TelegramQml::requestReadMessage(qint32 msgId)
 {
-    if(p->request_messages.contains(msgId))
-        return false;
+    getMessagesLock.lock();
+    QList<qint32> singleRequest;
+    singleRequest << msgId;
+    p->telegram->messagesGetMessages(singleRequest);
+    getMessagesLock.unlock();
 
-    p->request_messages << msgId;
-
-    p->messageRequester->stop();
-    p->messageRequester->start();
+//    p->messageRequester->stop();
+//    p->messageRequester->start();
     return true;
 }
 
-void TelegramQml::requestReadMessage_prv()
+bool TelegramQml::requestReadChannelMessage(qint32 msgId, qint32 channelId, qint64 accessHash)
 {
-    if(!p->telegram)
-        return;
-    if(p->request_messages.isEmpty())
-        return;
-
-    p->telegram->messagesGetMessages(p->request_messages);
-    p->request_messages.clear();
+    getMessagesLock.lock();
+    QList<qint32> singleRequest;
+    singleRequest << msgId;
+    InputChannel channel(InputChannel::typeInputChannel);
+    channel.setChannelId(channelId);
+    channel.setAccessHash(accessHash);
+    p->telegram->channelsGetMessages(channel, singleRequest);
+    getMessagesLock.unlock();
+    return true;
 }
+
+//void TelegramQml::requestReadMessage_prv()
+//{
+//    if(!p->telegram)
+//        return;
+//    getMessagesLock.lock();
+//    if(p->request_messages.isEmpty())
+//    {
+//        getMessagesLock.unlock();
+//        return;
+//    }
+
+//    }
+//    p->request_messages.clear();
+//    getMessagesLock.unlock();
+//}
 
 void TelegramQml::removeFiles(const QString &dir)
 {
@@ -3207,7 +3262,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
     MessageObject *msgObj = p->pend_messages.take(id);
     msgObj->setSent(true);
 
-    qint64 old_msgId = msgObj->id();
+    qint64 old_msgId = msgObj->unifiedId();
 
     Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     if (peer.classType() == Peer::typePeerChat)
@@ -3227,6 +3282,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
     msg.setReplyToMsgId(msgObj->replyToMsgId());
     msg.setMedia(result.media());
 
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
     qint64 did = msg.toId().chatId();
     if( !did )
         did = msg.toId().channelId();
@@ -3239,13 +3295,12 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
         insertMessage(msg);
         timerUpdateDialogs(3000);
 
-        Q_EMIT messageSent(id, p->messages.value(result.id()));
+        Q_EMIT messageSent(id, p->messages.value(unifiedId));
     }
     else
     {
-        auto deleteMsg = QList<int>();
-        deleteMsg.append(old_msgId);
-        deleteMessages(deleteMsg);
+        p->database->deleteMessage(old_msgId);
+        Q_EMIT messagesChanged(false);
     }
     Q_EMIT messagesSent(1);
 }
@@ -3291,7 +3346,7 @@ void TelegramQml::messagesSendMedia_slt(qint64 id, const UpdatesType &updates)
     if(!uplMsg)
         return;
 
-    qint64 old_msgId = uplMsg->id();
+    qint64 old_msgId = uplMsg->unifiedId();
 
     MessageObject* msg;
     msg = p->messages.value(old_msgId);
@@ -3492,7 +3547,8 @@ void TelegramQml::messagesSearch_slt(qint64 id, const MessagesMessages &result)
     Q_FOREACH( const Message & m, result.messages() )
     {
         insertMessage(m);
-        res << m.id();
+        auto unifiedId = QmlUtils::getUnifiedMessageKey(m.id(), m.toId().channelId());
+        res << unifiedId;
     }
 
     Q_EMIT searchDone(res);
@@ -3650,7 +3706,7 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
     MessageObject *msgObj = p->pend_messages.take(id);
     msgObj->setSent(true);
 
-    qint64 old_msgId = msgObj->id();
+    qint64 old_msgId = msgObj->unifiedId();
 
     Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     if (peer.classType() == Peer::typePeerChat)
@@ -3702,7 +3758,7 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
 
     msgObj->setSent(true);
 
-    qint64 old_msgId = msgObj->id();
+    qint64 old_msgId = msgObj->unifiedId();
 
     Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
     if (peer.classType() == Peer::typePeerChat)
@@ -3915,6 +3971,7 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
     msg.setFwdDate(fwd_date);
     msg.setReplyToMsgId(reply_to_msg_id);
 
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
     insertMessage(msg);
     if( p->dialogs.contains(userId) )
     {
@@ -3937,7 +3994,7 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
 
     timerUpdateDialogs(3000);
 
-    Q_EMIT incomingMessage( p->messages.value(msg.id()) );
+    Q_EMIT incomingMessage( p->messages.value(unifiedId) );
 
     if (!out) {
         Q_EMIT messagesReceived(1);
@@ -3962,6 +4019,7 @@ void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 ch
     msg.setFwdFromId(fwd_from_id);
     msg.setReplyToMsgId(reply_to_msg_id);
 
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
     insertMessage(msg);
     if( p->dialogs.contains(chatId) )
     {
@@ -3981,7 +4039,7 @@ void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 ch
 
     timerUpdateDialogs(3000);
 
-    Q_EMIT incomingMessage( p->messages.value(msg.id()) );
+    Q_EMIT incomingMessage( p->messages.value(unifiedId) );
 
     if (!out) {
         Q_EMIT messagesReceived(1);
@@ -4161,7 +4219,7 @@ void TelegramQml::uploadCancelFile_slt(qint64 fileId, bool cancelled)
     if( p->uploads.contains(fileId) )
     {
         MessageObject *msgObj = p->uploads.take(fileId);
-        qint64 msgId = msgObj->id();
+        qint64 msgId = msgObj->unifiedId();
 
         insertToGarbeges(p->messages.value(msgId));
         Q_EMIT messagesChanged(false);
@@ -4227,40 +4285,49 @@ void TelegramQml::insertDialog(const Dialog &d, bool encrypted, bool fromDb)
         p->database->insertDialog(d, encrypted);
 }
 
-void TelegramQml::insertMessage(const Message &t_m, bool encrypted, bool fromDb, bool tempMsg)
+void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool fromDb, bool tempMsg)
 {
-    Message m = t_m;
-    if (m.message().isEmpty()
-            && m.action().classType() == MessageAction::typeMessageActionEmpty
-            && m.media().classType() == MessageMedia::typeMessageMediaEmpty) {
+    if (newMsg.message().isEmpty()
+            && newMsg.action().classType() == MessageAction::typeMessageActionEmpty
+            && newMsg.media().classType() == MessageMedia::typeMessageMediaEmpty) {
         return;
     }
 
-    if(m.replyToMsgId() && !p->messages.contains(m.replyToMsgId()))
-    {
-        if( requestReadMessage(m.replyToMsgId()) )
-            p->pending_replies.insert(m.replyToMsgId(), m.id());
+    Message m = newMsg;
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(m.id(), m.toId().channelId());
+    auto replyToUnifiedId = QmlUtils::getUnifiedMessageKey(m.replyToMsgId(), m.toId().channelId());
 
+    if(m.replyToMsgId() && !p->messages.contains(replyToUnifiedId))
+    {
+        if(m.toId().channelId())
+        {
+            const InputPeer & input = getInputPeer(m.toId().channelId());
+            if(requestReadChannelMessage(m.replyToMsgId(), input.channelId(), input.accessHash()))
+                p->pending_replies.insert(replyToUnifiedId, unifiedId);
+        } else
+        {
+            if(requestReadMessage(m.replyToMsgId()))
+                p->pending_replies.insert(replyToUnifiedId, unifiedId);
+        }
         m.setReplyToMsgId(0);
     }
 
-    MessageObject *obj = p->messages.value(m.id());
+    MessageObject *obj = p->messages.value(unifiedId);
     if( !obj )
     {
         obj = new MessageObject(m, this);
         obj->setEncrypted(encrypted);
 
-        p->messages.insert(m.id(), obj);
-
-        qint64 did = m.toId().chatId();
+        qint32 did = m.toId().chatId();
         if( !did )
             did = m.toId().channelId();
         if( !did )
             did = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
+        p->messages.insert(unifiedId, obj);
 
         QList<qint64> list = p->messages_list.value(did);
 
-        list << m.id();
+        list << unifiedId;
 
         telegramp_qml_tmp = p;
         std::stable_sort( list.begin(), list.end(), checkMessageLessThan );
@@ -4284,58 +4351,58 @@ void TelegramQml::insertMessage(const Message &t_m, bool encrypted, bool fromDb,
         updateEncryptedTopMessage(m);
 
 
-    if(p->pending_replies.contains(m.id()))
+    if(p->pending_replies.contains(unifiedId))
     {
-        const QList<qint64> &pends = p->pending_replies.values(m.id());
+        const QList<qint64> &pends = p->pending_replies.values(unifiedId);
         Q_FOREACH(const qint64 msgId, pends)
         {
             MessageObject *msg = p->messages.value(msgId);
             if(msg)
-                msg->setReplyToMsgId(m.id());
+                msg->setReplyToMsgId(unifiedId);
         }
 
-        p->pending_replies.remove(m.id());
+        p->pending_replies.remove(unifiedId);
     }
 }
 
-void TelegramQml::insertUser(const User &u, bool fromDb)
+void TelegramQml::insertUser(const User &newUser, bool fromDb)
 {
     bool become_online = false;
-    UserObject *obj = p->users.value(u.id());
-    if(!fromDb && obj && obj->status()->classType() == UserStatus::typeUserStatusOffline &&
-            u.status().classType() == UserStatus::typeUserStatusOnline )
+    UserObject *userObj = p->users.value(newUser.id());
+    if(!fromDb && userObj && userObj->status()->classType() == UserStatus::typeUserStatusOffline &&
+            newUser.status().classType() == UserStatus::typeUserStatusOnline )
         become_online = true;
 
-    if( !obj )
+    if( !userObj )
     {
-        obj = new UserObject(u, this);
-        p->users.insert(u.id(), obj);
+        userObj = new UserObject(newUser, this);
+        p->users.insert(newUser.id(), userObj);
 
 //        getFile(obj->photo()->photoSmall());
 
         QStringList userNameKeys;
-        if(!u.username().isEmpty())
+        if(!newUser.username().isEmpty())
         {
-            userNameKeys << stringToIndex(u.firstName());
-            userNameKeys << stringToIndex(u.lastName());
-            userNameKeys << stringToIndex(u.username());
+            userNameKeys << stringToIndex(newUser.firstName());
+            userNameKeys << stringToIndex(newUser.lastName());
+            userNameKeys << stringToIndex(newUser.username());
         }
 
         Q_FOREACH(const QString &key, userNameKeys)
-            p->userNameIndexes.insertMulti(key.toLower(), u.id());
+            p->userNameIndexes.insertMulti(key.toLower(), newUser.id());
     }
     else
     if(fromDb)
         return;
     else
-        *obj = u;
+        *userObj = newUser;
 
     if(!fromDb && p->database)
-        p->database->insertUser(u);
+        p->database->insertUser(newUser);
 
     if(become_online)
-        Q_EMIT userBecomeOnline(u.id());
-    if(u.id() == me())
+        Q_EMIT userBecomeOnline(newUser.id());
+    if(newUser.id() == me())
         Q_EMIT myUserChanged();
 
     Q_EMIT usersChanged();
@@ -4929,13 +4996,14 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
 
     insertMessage(msg, true);
 
-    MessageObject *msgObj = p->messages.value(msg.id());
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
+    MessageObject *msgObj = p->messages.value(unifiedId);
     if(msgObj && hasInternalMedia)
     {
         msgObj->media()->setEncryptKey(dmedia.key());
         msgObj->media()->setEncryptIv(dmedia.iv());
 
-        p->database->insertMediaEncryptedKeys(msg.id(), dmedia.key(), dmedia.iv());
+        p->database->insertMediaEncryptedKeys(unifiedId, dmedia.key(), dmedia.iv());
     }
 
     if(!FLAG_TO_OUT(msg.flags()) && !cachedMsg)
@@ -4946,7 +5014,8 @@ void TelegramQml::insertSecretChatMessage(const SecretChatMessage &sc, bool cach
 
     Dialog dlg;
     dlg.setPeer(dlgPeer);
-    dlg.setTopMessage(msg.id());
+
+    dlg.setTopMessage(unifiedId);
 
     if(!FLAG_TO_OUT(msg.flags()) && sc.decryptedMessage().action().classType() != DecryptedMessageAction::typeDecryptedMessageActionNotifyLayerSecret17)
     {

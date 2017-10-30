@@ -327,7 +327,7 @@ public Q_SLOTS:
     void addContacts(const QVariantList &vcontacts);
 
     void forwardMessages(QList<int> msgIds, qint64 toPeerId );
-    void deleteMessages(QList<int> msgIds );
+    void deleteMessages(QList<qint64> msgIds );
 
     void messagesCreateChat(const QList<int> &users, const QString & topic );
     void messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLimit = 0);
@@ -348,7 +348,7 @@ public Q_SLOTS:
 
     void channelsGetFullChannel(qint32 peerId);
     qint64 channelsReadHistory(qint32 channelId, qint64 accessHash);
-
+    void channelsDeleteMessages(qint32 channelId, qint64 accessHash, QList<qint64> msgIds);
     void installStickerSet(const QString &shortName);
     void uninstallStickerSet(const QString &shortName);
     void getStickerSet(const QString &shortName);
@@ -566,8 +566,8 @@ private Q_SLOTS:
 
 private:
     void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false);
-    void insertMessage(const Message & message , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
-    void insertUser( const User & user, bool fromDb = false );
+    void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
+    void insertUser(const User & newUser, bool fromDb = false );
     void insertChat( const Chat & chat, bool fromDb = false );
     void insertStickerSet(const StickerSet &set, bool fromDb = false);
     void insertStickerPack(const StickerPack &pack, bool fromDb = false);
@@ -591,6 +591,7 @@ private:
     QString publicKeyPath() const;
 
     QMutex getDialogsLock;
+    QMutex getMessagesLock;
 
 protected:
     void timerEvent(QTimerEvent *e);
@@ -623,7 +624,8 @@ private Q_SLOTS:
     void cleanUpMessages_prv();
 
     bool requestReadMessage(qint32 msgId);
-    void requestReadMessage_prv();
+    bool requestReadChannelMessage(qint32 msgId, qint32 channelId, qint64 accessHash);
+//    void requestReadMessage_prv();
 
     static void removeFiles(const QString &dir);
 

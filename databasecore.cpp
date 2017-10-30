@@ -1,6 +1,7 @@
 #include "databasecore.h"
 #include "telegramqml_macros.h"
 
+
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -193,7 +194,7 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.prepare("INSERT OR REPLACE INTO Messages (id, toId, toPeerType, unread, fromId, out, date, fwdDate, fwdFromId, replyToMsgId, message, actionUserId, actionPhoto, actionTitle, actionUsers, actionType, mediaAudio, mediaLastName, mediaFirstName, mediaPhoneNumber, mediaDocument, mediaGeo, mediaPhoto, mediaUserId, mediaVideo, mediaType) "
                   "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
 
-    query.bindValue(":id",message.id() );
+    query.bindValue(":id", message.id());
     qint32 toId = 0;
 
     if (message.toId().classType()==Peer::typePeerChannel)
