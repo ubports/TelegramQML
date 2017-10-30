@@ -15,6 +15,7 @@
 #include "../chatparticipantlist.h"
 #include "../tqobject.h"
 #include "../telegramqml_global.h"
+#include "utils.h"
 
 class TELEGRAMQMLSHARED_EXPORT DownloadObject : public TqObject
 {
@@ -5153,8 +5154,8 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(PeerObject* fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
     Q_PROPERTY(qint32 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
-    Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
-
+    Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+    Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
 public:
     MessageObject(const Message & another, QObject *parent = 0) : TqObject(parent){
         (void)another;
@@ -5174,7 +5175,7 @@ public:
         _replyToMsgId = another.replyToMsgId();
         _message = another.message();
         _classType = another.classType();
-
+        _unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
     }
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
@@ -5193,6 +5194,8 @@ public:
             return;
         _id = value;
         Q_EMIT idChanged();
+        unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        Q_EMIT unifiedIdChanged();
         Q_EMIT changed();
     }
 
@@ -5241,6 +5244,8 @@ public:
             return;
         _toId = value;
         Q_EMIT toIdChanged();
+        unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        Q_EMIT unifiedIdChanged();
         Q_EMIT changed();
     }
 
@@ -5376,6 +5381,9 @@ public:
         Q_EMIT changed();
     }
 
+    qint64 unifiedId() const {
+        return _unifiedId;
+    }
 
     void operator= ( const Message & another) {
         _id = another.id();
@@ -5406,7 +5414,8 @@ public:
         Q_EMIT messageChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
-
+        _unifiedId = Utils::getUnifiedMessageKey(_id, _toId->channelId());
+        Q_EMIT unifiedIdChanged();
     }
 
 Q_SIGNALS:
@@ -5427,6 +5436,7 @@ Q_SIGNALS:
     void replyToMsgIdChanged();
     void messageChanged();
     void classTypeChanged();
+    void unifiedIdChanged();
 
 private:
     qint32 _id;
@@ -5444,7 +5454,8 @@ private:
     PeerObject* _fwdFromId;
     qint32 _replyToMsgId;
     QString _message;
-    quint32 _classType;
+    qint32 _classType;
+    qint64 _unifiedId;
 
 };
 

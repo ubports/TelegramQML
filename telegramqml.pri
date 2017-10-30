@@ -59,7 +59,8 @@ SOURCES += \
     $$PWD/stickersmodel.cpp \
     $$PWD/documentattributelist.cpp \
     $$PWD/tgabstractlistmodel.cpp \
-    $$PWD/databaseabstractencryptor.cpp
+    $$PWD/databaseabstractencryptor.cpp \
+    $$PWD/utils.cpp
 
 HEADERS += \
     $$PWD/telegramqml_plugin.h \
@@ -95,7 +96,8 @@ HEADERS += \
     $$PWD/stickersmodel.h \
     $$PWD/documentattributelist.h \
     $$PWD/tgabstractlistmodel.h \
-    $$PWD/databaseabstractencryptor.h
+    $$PWD/databaseabstractencryptor.h \
+    $$PWD/utils.h
 
 RESOURCES += \
     $$PWD/tqmlresource.qrc
