@@ -3983,7 +3983,8 @@ public:
         (void)another;
         _peer = new PeerObject(another.peer(), this);
         _notifySettings = new PeerNotifySettingsObject(another.notifySettings(), this);
-        _topMessage = another.topMessage();
+        _topMessage = QmlUtils::getUnifiedMessageKey(another.topMessage(), _peer->channelId());
+         qWarning() << "top message set to: " << _topMessage;
         _unreadCount = another.unreadCount();
         _encrypted = false;
         _classType = another.classType();
@@ -4020,7 +4021,7 @@ public:
     }
 
     qint64 topMessage() const {
-        return QmlUtils::getUnifiedMessageKey(_topMessage, _peer->channelId());
+        return _topMessage;
     }
 
     void setTopMessage(qint64 value) {
@@ -4029,6 +4030,7 @@ public:
         _topMessage = value;
         Q_EMIT topMessageChanged();
         Q_EMIT changed();
+        qWarning() << "top message set to: " << value;
     }
 
     qint32 unreadCount() const {
@@ -4085,7 +4087,7 @@ public:
         Q_EMIT peerChanged();
         *_notifySettings = another.notifySettings();
         Q_EMIT notifySettingsChanged();
-        _topMessage = another.topMessage();
+        _topMessage = QmlUtils::getUnifiedMessageKey(another.topMessage(), _peer->channelId());
         Q_EMIT topMessageChanged();
         _unreadCount = another.unreadCount();
         Q_EMIT unreadCountChanged();

@@ -2641,7 +2641,7 @@ void TelegramQml::cleanUpMessages_prv()
     {
         qint64 msgId = dlg->topMessage();
         if(msgId)
-            lockedMessages.insert(QmlUtils::getUnifiedMessageKey(msgId, dlg->peer()->channelId()));
+            lockedMessages.insert(msgId);
     }
 
     Q_FOREACH(TelegramSearchModel *mdl, p->searchModels)
@@ -3770,7 +3770,8 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
 
     Dialog dialog;
     dialog.setPeer(peer);
-    dialog.setTopMessage(date);
+    //FIXME: Why the date is set as top Message???
+    dialog.setTopMessage(msgObj->id());
     dialog.setUnreadCount(0);
 
     MessageMediaObject *mediaObj = msgObj->media();
@@ -3976,7 +3977,7 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
     if( p->dialogs.contains(userId) )
     {
         DialogObject *dlg_o = p->dialogs.value(userId);
-        dlg_o->setTopMessage(id);
+        dlg_o->setTopMessage(unifiedId);
         dlg_o->setUnreadCount( dlg_o->unreadCount()+1 );
     }
     else
@@ -3986,7 +3987,7 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
 
         Dialog dlg;
         dlg.setPeer(fr_peer);
-        dlg.setTopMessage(id);
+        dlg.setTopMessage(unifiedId);
         dlg.setUnreadCount(1);
 
         insertDialog(dlg);
@@ -4024,14 +4025,14 @@ void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 ch
     if( p->dialogs.contains(chatId) )
     {
         DialogObject *dlg_o = p->dialogs.value(chatId);
-        dlg_o->setTopMessage(id);
+        dlg_o->setTopMessage(unifiedId);
         dlg_o->setUnreadCount( dlg_o->unreadCount()+1 );
     }
     else
     {
         Dialog dlg;
         dlg.setPeer(to_peer);
-        dlg.setTopMessage(id);
+        dlg.setTopMessage(unifiedId);
         dlg.setUnreadCount(1);
 
         insertDialog(dlg);
@@ -5172,7 +5173,7 @@ void TelegramQml::insertToGarbeges(QObject *obj)
     if(qobject_cast<MessageObject*>(obj))
     {
         MessageObject *msg = qobject_cast<MessageObject*>(obj);
-        const qint64 mId = msg->id();
+        const qint64 mId = msg->unifiedId();
         const qint64 dId = messageDialogId(mId);
 
         p->messages_list[dId].removeAll(mId);
@@ -5377,7 +5378,8 @@ void TelegramQml::updateEncryptedTopMessage(const Message &message)
     peer.setUserId(dlg->peer()->userId());
 
     Dialog dialog;
-    dialog.setTopMessage(message.date());
+    //FIXME: Why the date is set as top Message???
+    dialog.setTopMessage(message.id());
     dialog.setUnreadCount(dlg->unreadCount());
     dialog.setPeer(peer);
 
