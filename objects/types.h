@@ -3394,40 +3394,6 @@ public:
     };
     MessageActionEnum messageActionEnum() const;
 
-    void operator= ( const MessageAction & another) {
-        _userId = another.userId();
-        Q_EMIT userIdChanged();
-        *_photo = another.photo();
-        Q_EMIT photoChanged();
-        _title = another.title();
-        Q_EMIT titleChanged();
-        _users = another.users();
-        Q_EMIT usersChanged();
-        _classType = another.classType();
-        Q_EMIT classTypeChanged();
-        Q_EMIT messageActionEnumChanged();
-    }
-
-Q_SIGNALS:
-    void changed();
-    void addressChanged();
-    void userIdChanged();
-    void inviterIdChanged();
-    void photoChanged();
-    void titleChanged();
-    void usersChanged();
-    void classTypeChanged();
-    void messageActionEnumChanged();
-
-private:
-    QString _address;
-    qint32 _userId;
-    qint32 _inviterId;
-    PhotoObject* _photo;
-    QString _title;
-    QList<qint32> _users;
-    quint32 _classType;
-
     MessageActionEnum messageActionEnum()
     {
         switch(static_cast<MessageAction::MessageActionClassType>(_classType))
@@ -3469,6 +3435,40 @@ private:
                 Q_ASSERT(false);
         }
     }
+
+    void operator= ( const MessageAction & another) {
+        _userId = another.userId();
+        Q_EMIT userIdChanged();
+        *_photo = another.photo();
+        Q_EMIT photoChanged();
+        _title = another.title();
+        Q_EMIT titleChanged();
+        _users = another.users();
+        Q_EMIT usersChanged();
+        _classType = another.classType();
+        Q_EMIT classTypeChanged();
+        Q_EMIT messageActionEnumChanged();
+    }
+
+Q_SIGNALS:
+    void changed();
+    void addressChanged();
+    void userIdChanged();
+    void inviterIdChanged();
+    void photoChanged();
+    void titleChanged();
+    void usersChanged();
+    void classTypeChanged();
+    void messageActionEnumChanged();
+
+private:
+    QString _address;
+    qint32 _userId;
+    qint32 _inviterId;
+    PhotoObject* _photo;
+    QString _title;
+    QList<qint32> _users;
+    quint32 _classType;
 };
 
 Q_DECLARE_METATYPE(MessageActionObject*)
@@ -4821,6 +4821,7 @@ Q_DECLARE_METATYPE(DecryptedMessageObject*)
 class TELEGRAMQMLSHARED_EXPORT MessageMediaObject : public TqObject
 {
     Q_OBJECT
+    Q_ENUMS(MessageMediaEnum)
     Q_PROPERTY(AudioObject* audio READ audio WRITE setAudio NOTIFY audioChanged)
     Q_PROPERTY(QString lastName READ lastName WRITE setLastName NOTIFY lastNameChanged)
     Q_PROPERTY(QString firstName READ firstName WRITE setFirstName NOTIFY firstNameChanged)
@@ -4837,6 +4838,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageMediaObject : public TqObject
     Q_PROPERTY(QByteArray encryptKey READ encryptKey WRITE setEncryptKey NOTIFY encryptKeyChanged)
     Q_PROPERTY(QByteArray encryptIv READ encryptIv WRITE setEncryptIv NOTIFY encryptIvChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+    Q_PROPERTY(MessageMediaEnum messageMediaEnum READ messageMediaEnum NOTIFY messageMediaEnumChanged)
 
 public:
     MessageMediaObject(const MessageMedia & another, QObject *parent = 0) : TqObject(parent){
@@ -5060,9 +5062,62 @@ public:
             return;
         _classType = value;
         Q_EMIT classTypeChanged();
+        Q_EMIT messageMediaEnumChanged();
         Q_EMIT changed();
     }
 
+    enum MessageMediaEnum {
+        Empty,
+        Photo,
+        Video,
+        Geo,
+        Contact,
+        Unsupported,
+        Document,
+        Audio,
+        WebPage,
+        Venue
+    };
+    MessageMediaEnum messageMediaEnum() const;
+
+    MessageMediaEnum messageMediaEnum()
+    {
+        switch(static_cast<MessageMedia::MessageMediaClassType>(_classType))
+        {
+            case MessageMedia::MessageMediaClassType::typeMessageMediaEmpty:
+                return MessageMediaEnum::Empty;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaPhoto:
+                return MessageMediaEnum::Photo;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaVideo:
+                return MessageMediaEnum::Video;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaGeo:
+                return MessageMediaEnum::Geo;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaContact:
+                return MessageMediaEnum::Contact;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaUnsupported:
+                return MessageMediaEnum::Unsupported;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaDocument:
+                return MessageMediaEnum::Document;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaAudio:
+                return MessageMediaEnum::Audio;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaWebPage:
+                return MessageMediaEnum::WebPage;
+            break;
+            case MessageMedia::MessageMediaClassType::typeMessageMediaVenue:
+                return MessageMediaEnum::Venue;
+            break;
+            default:
+                Q_ASSERT(false);
+        }
+    }
 
     void operator= ( const MessageMedia & another) {
         *_audio = another.audio();
@@ -5093,6 +5148,7 @@ public:
         Q_EMIT venueAddressChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
+        Q_EMIT messageMediaEnumChanged();
 
     }
 
@@ -5115,6 +5171,7 @@ Q_SIGNALS:
     void encryptKeyChanged();
     void encryptIvChanged();
     void classTypeChanged();
+    void messageMediaEnumChanged();
 
 private:
     AudioObject* _audio;
@@ -5174,7 +5231,7 @@ public:
         _media = new MessageMediaObject(another.media(), this);
         _fwdDate = another.fwdDate();
         _fwdFromId = new PeerObject(another.fwdFromId(), this);
-        _replyToMsgId = another.replyToMsgId();
+        _replyToMsgId = another.replyToMsgId() == 0 ? 0 : QmlUtils::getUnifiedMessageKey(another.replyToMsgId(), _toId->channelId());
         _message = another.message();
         _classType = another.classType();
         _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
@@ -5410,7 +5467,7 @@ public:
         Q_EMIT fwdDateChanged();
         *_fwdFromId = another.fwdFromId();
         Q_EMIT fwdFromIdChanged();
-        _replyToMsgId = another.replyToMsgId();
+        _replyToMsgId = another.replyToMsgId() == 0 ? 0 : QmlUtils::getUnifiedMessageKey(another.replyToMsgId(), _toId->channelId());
         Q_EMIT replyToMsgIdChanged();
         _message = another.message();
         Q_EMIT messageChanged();
@@ -5454,7 +5511,7 @@ private:
     MessageMediaObject* _media;
     qint32 _fwdDate;
     PeerObject* _fwdFromId;
-    qint32 _replyToMsgId;
+    qint64 _replyToMsgId;
     QString _message;
     qint32 _classType;
     qint64 _unifiedId;

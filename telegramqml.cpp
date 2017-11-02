@@ -820,7 +820,10 @@ DialogObject *TelegramQml::dialog(qint64 id) const
 {
     DialogObject *res = p->dialogs.value(id);
     if( !res )
+    {
+        qWarning() << "Did not find dialog id: " << id;
         res = p->nullDialog;
+    }
     return res;
 }
 
@@ -828,7 +831,10 @@ MessageObject *TelegramQml::message(qint64 id) const
 {
     MessageObject *res = p->messages.value(id);
     if( !res )
+    {
+        qWarning() << "Did not find message id: " << id;
         res = p->nullMessage;
+    }
     return res;
 }
 
@@ -836,7 +842,10 @@ ChatObject *TelegramQml::chat(qint64 id) const
 {
     ChatObject *res = p->chats.value(id);
     if( !res )
+    {
+        qWarning() << "Did not find chat id: " << id;
         res = p->nullChat;
+    }
     return res;
 }
 
@@ -844,7 +853,10 @@ UserObject *TelegramQml::user(qint64 id) const
 {
     UserObject *res = p->users.value(id);
     if( !res )
+    {
+        qWarning() << "Did not find user id: " << id;
         res = p->nullUser;
+    }
     return res;
 }
 
@@ -1729,7 +1741,7 @@ void TelegramQml::contactsUnblock(qint64 userId)
     p->unblockRequests.insert(requestId, userId);
 }
 
-qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
+qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, qint64 replyTo)
 {
     if( !p->telegram )
         return 0;
@@ -1738,10 +1750,10 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
     InputPeer peer = getInputPeer(dId);
 
     qint64 sendId;
-
+    qint32 simpleReplyId = QmlUtils::getSeparateMessageId(replyTo);
     Message message = newMessage(dId);
     message.setMessage(msg);
-    message.setReplyToMsgId(replyTo);
+    message.setReplyToMsgId(simpleReplyId);
 
     p->msg_send_random_id = generateRandomId();
     if(dlg && dlg->encrypted())
@@ -1752,7 +1764,7 @@ qint32 TelegramQml::sendMessage(qint64 dId, const QString &msg, int replyTo)
     {
 
         auto entities = QList<MessageEntity>();
-        sendId = p->telegram->messagesSendMessage(true, false, peer, replyTo, msg, p->msg_send_random_id, ReplyMarkup(), entities);
+        sendId = p->telegram->messagesSendMessage(true, false, peer, simpleReplyId, msg, p->msg_send_random_id, ReplyMarkup(), entities);
     }
 
     insertMessage(message, (dlg && dlg->encrypted()), false, true);
@@ -2872,6 +2884,7 @@ void TelegramQml::try_init()
     ASSERT(connect( p->telegram, &Telegram::channelsGetDialogsAnswer, this, &TelegramQml::channelsGetDialogs_slt));
     ASSERT(connect( p->telegram, &Telegram::channelsGetFullChannelAnswer, this, &TelegramQml::messagesGetFullChat_slt));
     ASSERT(connect( p->telegram, &Telegram::channelsGetImportantHistoryAnswer, this, &TelegramQml::messagesGetHistory_slt));
+    ASSERT(connect( p->telegram, &Telegram::channelsGetMessagesAnswer, this, &TelegramQml::messagesGetMessages_slt));
 
     ASSERT(connect( p->telegram, &Telegram::updates, this, &TelegramQml::updates_slt));
     ASSERT(connect( p->telegram, &Telegram::updatesCombined, this, &TelegramQml::updatesCombined_slt));
@@ -3279,7 +3292,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
     msg.setFlags(UNREAD_OUT_TO_FLAG(msgObj->unread(), msgObj->out()));
     msg.setToId(peer);
     msg.setMessage(msgObj->message());
-    msg.setReplyToMsgId(msgObj->replyToMsgId());
+    msg.setReplyToMsgId(QmlUtils::getSeparateMessageId(msgObj->replyToMsgId()));
     msg.setMedia(result.media());
 
     auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
@@ -3574,7 +3587,7 @@ void TelegramQml::messagesGetFullChat_slt(qint64 id, const MessagesChatFull &res
     //Some channel debugging
     if (fullChat->classType() == static_cast<qint32>(ChatFull::typeChannelFull))
     {
-        qWarning() << "Found full channel id: " << fullChat->id() << ", no of participants: " << fullChat->participants()->participants()->count();
+        qWarning() << "Found full channel id: " << fullChat->id() << ", no of participants: " << result.fullChat().participantsCount();
     }
     //If we are coming from deletion of a conversation, execute additional steps
     qint64 peerId = result.fullChat().id();
@@ -4302,6 +4315,7 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
     {
         if(m.toId().channelId())
         {
+            qWarning() << "reading channel reply msg: " << replyToUnifiedId;
             const InputPeer & input = getInputPeer(m.toId().channelId());
             if(requestReadChannelMessage(m.replyToMsgId(), input.channelId(), input.accessHash()))
                 p->pending_replies.insert(replyToUnifiedId, unifiedId);
@@ -4324,6 +4338,7 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
             did = m.toId().channelId();
         if( !did )
             did = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
+        qWarning() << "Inserting message " << m.id() << ", recipient " << did << ", unified id: " << unifiedId;
         p->messages.insert(unifiedId, obj);
 
         QList<qint64> list = p->messages_list.value(did);
@@ -4359,7 +4374,10 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
         {
             MessageObject *msg = p->messages.value(msgId);
             if(msg)
+            {
                 msg->setReplyToMsgId(unifiedId);
+                qWarning() << "In message " << msgId << " set reply id to: " << unifiedId;
+            }
         }
 
         p->pending_replies.remove(unifiedId);
@@ -4555,7 +4573,7 @@ void TelegramQml::insertUpdate(const Update &update)
         msg.setFlags(UNREAD_OUT_TO_FLAG(msgObj->unread(), msgObj->out()));
         msg.setToId(peer);
         msg.setMessage(msgObj->message());
-        msg.setReplyToMsgId(msgObj->replyToMsgId());
+        msg.setReplyToMsgId(QmlUtils::getSeparateMessageId(msgObj->replyToMsgId()));
 
         qint64 did = msg.toId().chatId();
         if( !did )

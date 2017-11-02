@@ -319,7 +319,7 @@ public Q_SLOTS:
     void contactsBlock(qint64 userId);
     void contactsUnblock(qint64 userId);
 
-    qint32 sendMessage( qint64 dialogId, const QString & msg, int replyTo = 0 );
+    qint32 sendMessage(qint64 dialogId, const QString & msg, qint64 replyTo = 0 );
     bool sendMessageAsDocument( qint64 dialogId, const QString & msg );
     void forwardDocument(qint64 dialogId, DocumentObject *doc);
 

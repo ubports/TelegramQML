@@ -240,7 +240,6 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":mediaVideo",media.video().id() );
     query.bindValue(":mediaAudio",media.audio().id() );
 
-    qWarning() << "Inserting message " << message.id() << ", recipient " << toId;
     bool res = query.exec();
     if(!res)
     {
