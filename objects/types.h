@@ -3972,7 +3972,7 @@ class TELEGRAMQMLSHARED_EXPORT DialogObject : public TqObject
     Q_OBJECT
     Q_PROPERTY(PeerObject* peer READ peer WRITE setPeer NOTIFY peerChanged)
     Q_PROPERTY(PeerNotifySettingsObject* notifySettings READ notifySettings WRITE setNotifySettings NOTIFY notifySettingsChanged)
-    Q_PROPERTY(qint64 topMessage READ topMessage WRITE setTopMessage NOTIFY topMessageChanged)
+    Q_PROPERTY(qint32 topMessage READ topMessage WRITE setTopMessage NOTIFY topMessageChanged)
     Q_PROPERTY(qint32 unreadCount READ unreadCount WRITE setUnreadCount NOTIFY unreadCountChanged)
     Q_PROPERTY(bool encrypted READ encrypted WRITE setEncrypted NOTIFY encryptedChanged)
     Q_PROPERTY(QStringList typingUsers READ typingUsers WRITE setTypingUsers NOTIFY typingUsersChanged)
@@ -3983,8 +3983,7 @@ public:
         (void)another;
         _peer = new PeerObject(another.peer(), this);
         _notifySettings = new PeerNotifySettingsObject(another.notifySettings(), this);
-        _topMessage = QmlUtils::getUnifiedMessageKey(another.topMessage(), _peer->channelId());
-         qWarning() << "top message set to: " << _topMessage;
+        _topMessage = another.topMessage();
         _unreadCount = another.unreadCount();
         _encrypted = false;
         _classType = another.classType();
@@ -4024,13 +4023,12 @@ public:
         return _topMessage;
     }
 
-    void setTopMessage(qint64 value) {
+    void setTopMessage(qint32 value) {
         if( value == _topMessage )
             return;
         _topMessage = value;
         Q_EMIT topMessageChanged();
         Q_EMIT changed();
-        qWarning() << "top message set to: " << value;
     }
 
     qint32 unreadCount() const {
@@ -4087,7 +4085,7 @@ public:
         Q_EMIT peerChanged();
         *_notifySettings = another.notifySettings();
         Q_EMIT notifySettingsChanged();
-        _topMessage = QmlUtils::getUnifiedMessageKey(another.topMessage(), _peer->channelId());
+        _topMessage = another.topMessage();
         Q_EMIT topMessageChanged();
         _unreadCount = another.unreadCount();
         Q_EMIT unreadCountChanged();
@@ -5211,10 +5209,11 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(MessageMediaObject* media READ media WRITE setMedia NOTIFY mediaChanged)
     Q_PROPERTY(qint32 fwdDate READ fwdDate WRITE setFwdDate NOTIFY fwdDateChanged)
     Q_PROPERTY(PeerObject* fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
-    Q_PROPERTY(qint64 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
+    Q_PROPERTY(qint32 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
+
 public:
     MessageObject(const Message & another, QObject *parent = 0) : TqObject(parent){
         (void)another;
@@ -5231,10 +5230,10 @@ public:
         _media = new MessageMediaObject(another.media(), this);
         _fwdDate = another.fwdDate();
         _fwdFromId = new PeerObject(another.fwdFromId(), this);
-        _replyToMsgId = another.replyToMsgId() == 0 ? 0 : QmlUtils::getUnifiedMessageKey(another.replyToMsgId(), _toId->channelId());
+        _replyToMsgId = another.replyToMsgId();
         _message = another.message();
         _classType = another.classType();
-        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
     }
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
@@ -5253,7 +5252,7 @@ public:
             return;
         _id = value;
         Q_EMIT idChanged();
-        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
         Q_EMIT changed();
     }
@@ -5303,7 +5302,7 @@ public:
             return;
         _toId = value;
         Q_EMIT toIdChanged();
-        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
         Q_EMIT changed();
     }
@@ -5408,7 +5407,7 @@ public:
         return _replyToMsgId;
     }
 
-    void setReplyToMsgId(qint64 replyToMsgId) {
+    void setReplyToMsgId(qint32 replyToMsgId) {
         if( replyToMsgId == _replyToMsgId )
             return;
         _replyToMsgId = replyToMsgId;
@@ -5432,7 +5431,7 @@ public:
         return _classType;
     }
 
-    void setClassType(quint32 value) {
+    void setClassType(qint32 value) {
         if( value == _classType )
             return;
         _classType = value;
@@ -5467,13 +5466,13 @@ public:
         Q_EMIT fwdDateChanged();
         *_fwdFromId = another.fwdFromId();
         Q_EMIT fwdFromIdChanged();
-        _replyToMsgId = another.replyToMsgId() == 0 ? 0 : QmlUtils::getUnifiedMessageKey(another.replyToMsgId(), _toId->channelId());
+        _replyToMsgId = another.replyToMsgId();
         Q_EMIT replyToMsgIdChanged();
         _message = another.message();
         Q_EMIT messageChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
-        _unifiedId = QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
+        _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
     }
 

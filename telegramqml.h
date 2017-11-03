@@ -236,6 +236,7 @@ public:
 
     Q_INVOKABLE DialogObject *dialog(qint64 id) const;
     Q_INVOKABLE MessageObject *message(qint64 id) const;
+    Q_INVOKABLE MessageObject *message(qint32 id, qint32 peerId) const;
     Q_INVOKABLE ChatObject *chat(qint64 id) const;
     Q_INVOKABLE UserObject *user(qint64 id) const;
     Q_INVOKABLE qint64 messageDialogId(qint64 id) const;
@@ -319,7 +320,7 @@ public Q_SLOTS:
     void contactsBlock(qint64 userId);
     void contactsUnblock(qint64 userId);
 
-    qint32 sendMessage(qint64 dialogId, const QString & msg, qint64 replyTo = 0 );
+    qint32 sendMessage(qint64 dialogId, const QString & msg, qint32 replyTo = 0 );
     bool sendMessageAsDocument( qint64 dialogId, const QString & msg );
     void forwardDocument(qint64 dialogId, DocumentObject *doc);
 

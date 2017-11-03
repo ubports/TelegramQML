@@ -675,7 +675,7 @@ Module {
         exports: ["TelegramQml/StickerPack 1.0"]
         exportMetaObjectRevisions: [0]
         Property { name: "emoticon"; type: "string" }
-        Property { name: "documents"; type: "QList<qint64>" }
+        Property { name: "documents"; type: "QList<int>" }
         Property { name: "classType"; type: "uint" }
         Signal { name: "changed" }
     }
@@ -1103,7 +1103,7 @@ Module {
         }
         Signal {
             name: "searchDone"
-            Parameter { name: "messages"; type: "QList<qint64>" }
+            Parameter { name: "messages"; type: "QList<int>" }
         }
         Signal {
             name: "contactsFounded"
@@ -1701,7 +1701,7 @@ Module {
             name: "removeMessageUpdate"
             Parameter { name: "id"; type: "int" }
         }
-        Method { name: "messageUpdates"; type: "QList<quint64>" }
+        Method { name: "messageUpdates"; type: "QList<int>" }
         Method {
             name: "messageUpdateItem"
             type: "MessageUpdate"

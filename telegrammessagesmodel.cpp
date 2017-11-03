@@ -159,9 +159,9 @@ int TelegramMessagesModel::stepCount() const
     return p->stepCount;
 }
 
-int TelegramMessagesModel::indexOf(qint64 msgId) const
+int TelegramMessagesModel::indexOf(qint32 msgId, qint32 channelId) const
 {
-    return p->messages.indexOf(msgId);
+    return p->messages.indexOf(QmlUtils::getUnifiedMessageKey(msgId, channelId));
 }
 
 void TelegramMessagesModel::init()
@@ -282,12 +282,12 @@ void TelegramMessagesModel::setReaded()
         return;
 
     p->dialog->setUnreadCount(0);
-    qint64 topMessageId = p->dialog->topMessage();
+    qint32 topMessageId = p->dialog->topMessage();
     if (topMessageId == 0) return;
 
-    const MessageObject* message = p->telegram->message(topMessageId);
+    const MessageObject* message = p->telegram->message(QmlUtils::getUnifiedMessageKey(topMessageId, p->dialog->peer()->channelId()));
     if(!message) {
-        qDebug() << __FUNCTION__ << ": Can't find message with id: " << topMessageId;
+        qWarning() << __FUNCTION__ << ": Can't find message with id: " << topMessageId;
         return;
     }
 
