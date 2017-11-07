@@ -3917,9 +3917,10 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
         qWarning() << "Installing sticker set: ";
         Q_FOREACH(auto mapElement, map.keys())
             qWarning() << mapElement << ": " << map.values(mapElement);
-        insertStickerSet(set);
+        //insertStickerSet(set);
         p->installedStickerSets.insert(set.id());
-        p->stickerShortIds[set.shortName()] = set.id();
+        //p->stickerShortIds[set.shortName()] = set.id();
+        getStickerSet(set.shortName());
     }
 
 
