@@ -865,7 +865,7 @@ UserObject *TelegramQml::user(qint64 id) const
     UserObject *res = p->users.value(id);
     if( !res )
     {
-        qWarning() << "Did not find user id: " << id;
+        //qWarning() << "Did not find user id: " << id;
         res = p->nullUser;
     }
     return res;
@@ -4343,7 +4343,6 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
     {
         if(m.toId().channelId())
         {
-            qWarning() << "reading channel reply msg: " << replyToUnifiedId;
             const InputPeer & input = getInputPeer(m.toId().channelId());
             if(requestReadChannelMessage(m.replyToMsgId(), input.channelId(), input.accessHash()))
                 p->pending_replies.insert(replyToUnifiedId, unifiedId);
@@ -4461,7 +4460,6 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
     //Channels report their participants count differently
     if (tempChat.classType() == Chat::typeChannel )
     {
-        qWarning() << "Found full channel id: " << tempChat.id() << ", no of participants: " << chatFull.participantsCount();
         tempChat.setParticipantsCount(chatFull.participantsCount());
     }
 
