@@ -66,6 +66,8 @@ class StickerSetObject;
 class Telegram;
 class TelegramThumbnailer;
 class TelegramQmlPrivate;
+class PeerObject;
+
 class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
 {
     Q_OBJECT
@@ -327,7 +329,7 @@ public Q_SLOTS:
     void addContact(const QString &firstName, const QString &lastName, const QString &phoneNumber);
     void addContacts(const QVariantList &vcontacts);
 
-    void forwardMessages(QList<int> msgIds, qint64 toPeerId );
+    void forwardMessages(QList<int> msgIds, qint32 toPeerId, PeerObject *fromPeer );
     void deleteMessages(QList<qint64> msgIds );
 
     void messagesCreateChat(const QList<int> &users, const QString & topic );

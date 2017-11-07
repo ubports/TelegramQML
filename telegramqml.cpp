@@ -1840,10 +1840,24 @@ void TelegramQml::addContacts(const QVariantList &vcontacts)
     p->telegram->contactsImportContacts(contacts, false);
 }
 
-void TelegramQml::forwardMessages(QList<int> msgIds, qint64 toPeerId)
+void TelegramQml::forwardMessages(QList<int> msgIds, qint32 toPeerId, PeerObject *fromPeer)
 {
-    const InputPeer & toPeer = getInputPeer(toPeerId);
+    const InputPeer &toPeer = getInputPeer(toPeerId);
+    qint32 peerId = 0;
+    switch(fromPeer->classType())
+    {
+    case Peer::typePeerUser:
+        peerId = fromPeer->userId();
+        break;
+    case Peer::typePeerChat:
+        peerId = fromPeer->chatId();
+        break;
+    case Peer::typePeerChannel:
+        peerId = fromPeer->channelId();
+        break;
+    }
 
+    const InputPeer &fwdFromPeer = getInputPeer(peerId);
     std::stable_sort(msgIds.begin(), msgIds.end(), qGreater<int>());
 
     QList<qint64> randoms;
@@ -1851,7 +1865,7 @@ void TelegramQml::forwardMessages(QList<int> msgIds, qint64 toPeerId)
         randoms << generateRandomId();
 
     //TODO: Resolve proper source input peer
-    p->telegram->messagesForwardMessages(false, InputPeer(), msgIds, randoms, toPeer);
+    p->telegram->messagesForwardMessages(false, fwdFromPeer, msgIds, randoms, toPeer);
 }
 
 void TelegramQml::deleteMessages(QList<qint64> msgIds)
