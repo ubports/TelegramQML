@@ -569,7 +569,7 @@ private:
     void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false);
     void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
     void insertUser(const User & newUser, bool fromDb = false );
-    void insertChat( const Chat & chat, bool fromDb = false );
+    void insertChat( const Chat & chat, bool fromDb = false, const ChatFull &chatFull = ChatFull() );
     void insertStickerSet(const StickerSet &set, bool fromDb = false);
     void insertStickerPack(const StickerPack &pack, bool fromDb = false);
     void insertDocument(const Document &doc, bool fromDb = false);

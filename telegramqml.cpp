@@ -273,7 +273,7 @@ TelegramQml::TelegramQml(QObject *parent) :
     p->nullStickerPack = new StickerPackObject(StickerPack(), this);
 
     connect(p->cleanUpTimer    , SIGNAL(timeout()), SLOT(cleanUpMessages_prv())   );
-    connect(p->messageRequester, SIGNAL(timeout()), SLOT(requestReadMessage_prv()));
+    //connect(p->messageRequester, SIGNAL(timeout()), SLOT(requestReadMessage_prv()));
 }
 
 QString TelegramQml::phoneNumber() const
@@ -2153,7 +2153,6 @@ void TelegramQml::channelsGetFullChannel(qint32 peerId)
     InputChannel channel(InputChannel::typeInputChannel);
     channel.setChannelId(input.channelId());
     channel.setAccessHash(input.accessHash());
-    qWarning() << "channelsGetFullChannel: Channel Id: " << input.channelId() << ", accessHash: " << input.accessHash();
     p->telegram->channelsGetFullChannel(channel);
 }
 
@@ -2889,6 +2888,12 @@ void TelegramQml::try_init()
     ASSERT(connect( p->telegram, &Telegram::messagesSendEncryptedAnswer, this, &TelegramQml::messagesSendEncrypted_slt));
     ASSERT(connect( p->telegram, &Telegram::messagesSendEncryptedFileAnswer, this, &TelegramQml::messagesSendEncryptedFile_slt));
 
+    ASSERT(connect( p->telegram, &Telegram::messagesGetStickersAnswer, this, &TelegramQml::messagesGetStickers_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesGetAllStickersAnswer, this, &TelegramQml::messagesGetAllStickers_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesGetStickerSetAnswer, this, &TelegramQml::messagesGetStickerSet_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesInstallStickerSetAnswer, this, &TelegramQml::messagesInstallStickerSet_slt));
+    ASSERT(connect( p->telegram, &Telegram::messagesUninstallStickerSetAnswer, this, &TelegramQml::messagesUninstallStickerSet_slt));
+
     ASSERT(connect( p->telegram, &Telegram::contactsGetContactsAnswer, this, &TelegramQml::contactsGetContacts_slt));
 
     ASSERT(connect( p->telegram, &Telegram::channelsGetDialogsAnswer, this, &TelegramQml::channelsGetDialogs_slt));
@@ -3583,7 +3588,7 @@ void TelegramQml::messagesGetFullChat_slt(qint64 id, const MessagesChatFull &res
     Q_FOREACH( const User & u, result.users() )
         insertUser(u);
     Q_FOREACH( const Chat & c, result.chats() )
-        insertChat(c);
+        insertChat(c, false, result.fullChat());
 
     ChatFullObject *fullChat = p->chatfulls.value(result.fullChat().id());
     if( !fullChat )
@@ -3594,11 +3599,6 @@ void TelegramQml::messagesGetFullChat_slt(qint64 id, const MessagesChatFull &res
     else
         *fullChat = result.fullChat();
 
-    //Some channel debugging
-    if (fullChat->classType() == static_cast<qint32>(ChatFull::typeChannelFull))
-    {
-        qWarning() << "Found full channel id: " << fullChat->id() << ", no of participants: " << result.fullChat().participantsCount();
-    }
     //If we are coming from deletion of a conversation, execute additional steps
     qint64 peerId = result.fullChat().id();
     if(p->deleteChatIds.contains(peerId)) {
@@ -3899,6 +3899,10 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
     const QList<StickerSet> &sets = stickers.sets();
     Q_FOREACH(const StickerSet &set, sets)
     {
+        const QMap<QString, QVariant> map = set.toMap();
+        qWarning() << "Installing sticker set: ";
+        Q_FOREACH(auto mapElement, map.keys())
+            qWarning() << mapElement << ": " << map.values(mapElement);
         insertStickerSet(set);
         p->installedStickerSets.insert(set.id());
         p->stickerShortIds[set.shortName()] = set.id();
@@ -4348,7 +4352,6 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
             did = m.toId().channelId();
         if( !did )
             did = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
-        qWarning() << "Inserting message " << m.id() << ", recipient " << did << ", unified id: " << unifiedId;
         p->messages.insert(unifiedId, obj);
 
         QList<qint64> list = p->messages_list.value(did);
@@ -4386,7 +4389,6 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
             if(msg)
             {
                 msg->setReplyToMsgId(m.id());
-                qWarning() << "In message " << msgId << " set reply id to: " << m.id();
             }
         }
 
@@ -4437,22 +4439,31 @@ void TelegramQml::insertUser(const User &newUser, bool fromDb)
     Q_EMIT usersChanged();
 }
 
-void TelegramQml::insertChat(const Chat &c, bool fromDb)
+void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFull)
 {
     ChatObject *obj = p->chats.value(c.id());
+    Chat tempChat = c;
+
+    //Channels report their participants count differently
+    if (tempChat.classType() == Chat::typeChannel )
+    {
+        qWarning() << "Found full channel id: " << tempChat.id() << ", no of participants: " << chatFull.participantsCount();
+        tempChat.setParticipantsCount(chatFull.participantsCount());
+    }
+
     if( !obj )
     {
-        obj = new ChatObject(c, this);
-        p->chats.insert(c.id(), obj);
+        obj = new ChatObject(tempChat, this);
+        p->chats.insert(tempChat.id(), obj);
     }
     else
     if(fromDb)
         return;
     else
-        *obj = c;
+        *obj = tempChat;
 
     if(!fromDb)
-        p->database->insertChat(c);
+        p->database->insertChat(tempChat);
 
     Q_EMIT chatsChanged();
 }
