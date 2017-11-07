@@ -3927,14 +3927,11 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
         //insertStickerSet(set);
         p->installedStickerSets.insert(set.id());
         //p->stickerShortIds[set.shortName()] = set.id();
-        //getStickerSet(set.shortName());
-        if(p->telegram) {
-            InputStickerSet iSet(InputStickerSet::typeInputStickerSetID);
-            iSet.setAccessHash(set.accessHash());
-            iSet.setId(set.id());
-            auto msgId = p->telegram->messagesGetStickerSet(iSet);
-            qWarning() << "Sticker " << set.shortName() << " requested in msg id " << msgId;
-        }
+        InputStickerSet iSet(InputStickerSet::typeInputStickerSetID);
+        iSet.setAccessHash(set.accessHash());
+        iSet.setId(set.id());
+        auto msgId = p->telegram->messagesGetStickerSet(iSet);
+        qWarning() << "Sticker " << set.shortName() << " requested in msg id " << msgId;
     }
 
 
