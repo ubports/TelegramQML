@@ -2908,6 +2908,8 @@ void TelegramQml::try_init()
     ASSERT(connect( p->telegram, &Telegram::messagesInstallStickerSetAnswer, this, &TelegramQml::messagesInstallStickerSet_slt));
     ASSERT(connect( p->telegram, &Telegram::messagesUninstallStickerSetAnswer, this, &TelegramQml::messagesUninstallStickerSet_slt));
 
+    connect( p->telegram, &Telegram::messagesGetStickerSetError, this, &TelegramQml::messagesGetStickerSetError_slt);
+
     ASSERT(connect( p->telegram, &Telegram::contactsGetContactsAnswer, this, &TelegramQml::contactsGetContacts_slt));
 
     ASSERT(connect( p->telegram, &Telegram::channelsGetDialogsAnswer, this, &TelegramQml::channelsGetDialogs_slt));
@@ -3133,6 +3135,11 @@ void TelegramQml::authSignInError_slt(qint64 id, qint32 errorCode, QString error
     }
 }
 
+void TelegramQml::messagesGetStickerSetError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
+{
+    qWarning() << __FUNCTION__ << "msg: " << msgId << ": " << errorCode << ": " << errorText;
+}
+
 void TelegramQml::authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText)
 {
     Q_UNUSED(id)
@@ -3145,7 +3152,7 @@ void TelegramQml::authSignUpError_slt(qint64 id, qint32 errorCode, QString error
     Q_EMIT authSignInErrorChanged();
     Q_EMIT authSignUpErrorChanged();
 
-    qDebug() << __FUNCTION__ << errorText;
+    qWarning() << __FUNCTION__ << errorText;
 }
 
 void TelegramQml::error_slt(qint64 id, qint32 errorCode, QString errorText, QString functionName)
@@ -3920,7 +3927,14 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
         //insertStickerSet(set);
         p->installedStickerSets.insert(set.id());
         //p->stickerShortIds[set.shortName()] = set.id();
-        getStickerSet(set.shortName());
+        //getStickerSet(set.shortName());
+        if(p->telegram) {
+            InputStickerSet iSet(InputStickerSet::typeInputStickerSetID);
+            iSet.setAccessHash(set.accessHash());
+            iSet.setId(set.id());
+            auto msgId = p->telegram->messagesGetStickerSet(iSet);
+            qWarning() << "Sticker " << set.shortName() << " requested in msg id " << msgId;
+        }
     }
 
 
@@ -4681,6 +4695,9 @@ void TelegramQml::insertUpdate(const Update &update)
         break;
 
     case Update::typeUpdateContactLink:
+        break;
+
+    case Update::typeUpdateWebPage:
         break;
 
     case Update::typeUpdateChatParticipantDelete:
