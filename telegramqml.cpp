@@ -3392,14 +3392,14 @@ void TelegramQml::messagesGetMessages_slt(qint64 id, const MessagesMessages &res
 void TelegramQml::messagesSendMedia_slt(qint64 id, const UpdatesType &updates)
 {
     MessageObject *uplMsg = p->uploads.value(id);
-    if(!uplMsg)
-        return;
+    if(uplMsg) {
+        qint64 old_msgId = uplMsg->unifiedId();
 
-    qint64 old_msgId = uplMsg->unifiedId();
+        MessageObject* msg;
+        msg = p->messages.value(old_msgId);
+        insertToGarbeges(msg);
+    }
 
-    MessageObject* msg;
-    msg = p->messages.value(old_msgId);
-    insertToGarbeges(msg);
     insertUpdates(updates);
     timerUpdateDialogs(3000);
 
