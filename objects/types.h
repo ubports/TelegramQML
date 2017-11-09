@@ -5992,5 +5992,125 @@ private:
 
 Q_DECLARE_METATYPE(InputChannelObject*)
 
+class TELEGRAMQMLSHARED_EXPORT UpdatesStateObject : public TqObject
+{
+    Q_OBJECT
+    Q_PROPERTY(qint32 date READ date WRITE setDate NOTIFY dateChanged)
+    Q_PROPERTY(qint32 pts READ pts WRITE setPts NOTIFY ptsChanged)
+    Q_PROPERTY(qint32 qts READ qts WRITE setQts NOTIFY qtsChanged)
+    Q_PROPERTY(qint32 seq READ seq WRITE setSeq NOTIFY seqChanged)
+    Q_PROPERTY(qint32 unreadCount READ unreadCount WRITE setUnreadCount NOTIFY unreadCountChanged)
+
+
+public:
+    UpdatesStateObject(const UpdatesState & another, QObject *parent = 0) : TqObject(parent){
+        (void)another;
+       _date = another.date();
+       _pts = another.pts();
+       _qts = another.qts();
+       _seq = another.seq();
+       _unreadCount = another.unreadCount();
+
+    }
+    UpdatesStateObject(QObject *parent = 0) : TqObject(parent){}
+   ~UpdatesStateObject(){}
+
+    qint32 date() const {
+        return _date;
+    }
+
+    void setDate(qint32 value) {
+        if( value == _date )
+            return;
+        _date = value;
+        Q_EMIT dateChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 pts() const {
+        return _pts;
+    }
+
+    void setPts(qint32 value) {
+        if( value == _pts )
+            return;
+        _pts = value;
+        Q_EMIT ptsChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 qts() const {
+        return _qts;
+    }
+
+    void setQts(qint32 value) {
+        if( value == _qts )
+            return;
+        _qts = value;
+        Q_EMIT qtsChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 seq() const {
+        return _seq;
+    }
+
+    void setSeq(qint32 value) {
+        if( value == _seq )
+            return;
+        _seq = value;
+        Q_EMIT seqChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 unreadCount() const {
+        return _unreadCount;
+    }
+
+    void setUnreadCount(qint32 value) {
+        if( value == _unreadCount )
+            return;
+        _unreadCount = value;
+        Q_EMIT unreadCountChanged();
+        Q_EMIT changed();
+    }
+
+    void operator= ( const UpdatesState & another) {
+        _date = another.date();
+        Q_EMIT dateChanged();
+        _pts = another.pts();
+        Q_EMIT ptsChanged();
+        _qts = another.qts();
+        Q_EMIT qtsChanged();
+        _seq = another.seq();
+        Q_EMIT seqChanged();
+        _unreadCount = another.unreadCount();
+        Q_EMIT unreadCountChanged();
+    }
+
+    bool operator== ( const UpdatesStateObject  *another) {
+        return _date == another->date() &&
+                _pts == another->pts() &&
+                _qts == another->qts() &&
+                _seq == another->seq() &&
+                _unreadCount == another->unreadCount();
+    }
+
+Q_SIGNALS:
+    void changed();
+    void dateChanged();
+    void ptsChanged();
+    void qtsChanged();
+    void seqChanged();
+    void unreadCountChanged();
+
+private:
+    qint32 _date;
+    qint32 _pts;
+    qint32 _qts;
+    qint32 _seq;
+    qint32 _unreadCount;
+
+};
 
 #endif //TELEGRAMQMLTYPEOBJECT_H

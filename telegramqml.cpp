@@ -24,6 +24,7 @@
 #include "telegramthumbnailer.h"
 #include "objects/types.h"
 #include "utils.h"
+#include "syncmanager.h"
 #include <secret/decrypter.h>
 #include <util/utils.h>
 #include <telegram.h>
@@ -197,12 +198,12 @@ public:
     QTimer *cleanUpTimer;
     QTimer *messageRequester;
 
-    UpdatesState state;
-
     TelegramThumbnailer thumbnailer;
 
     QTimer *sleepTimer;
     QTimer *wakeTimer;
+
+    SyncManager *syncManager;
 };
 
 TelegramQml::TelegramQml(QObject *parent) :
@@ -272,6 +273,7 @@ TelegramQml::TelegramQml(QObject *parent) :
     p->nullStickerSet = new StickerSetObject(StickerSet(), this);
     p->nullStickerPack = new StickerPackObject(StickerPack(), this);
 
+    p->syncManager = new SyncManager(this);
     connect(p->cleanUpTimer    , SIGNAL(timeout()), SLOT(cleanUpMessages_prv())   );
     //connect(p->messageRequester, SIGNAL(timeout()), SLOT(requestReadMessage_prv()));
 }
@@ -1864,22 +1866,18 @@ void TelegramQml::forwardMessages(QList<int> msgIds, qint32 toPeerId, PeerObject
     for(int i=0; i<msgIds.count(); i++)
         randoms << generateRandomId();
 
-    //TODO: Resolve proper source input peer
     p->telegram->messagesForwardMessages(false, fwdFromPeer, msgIds, randoms, toPeer);
 }
 
-void TelegramQml::deleteMessages(QList<qint64> msgIds)
+void TelegramQml::deleteMessages(const QList<int> msgIds, PeerObject *peer)
 {
 
     if(!p->telegram)
         return;
 
-    QList<qint32> simpleIds;
-
-    Q_FOREACH(qint64 msgId, msgIds)
+    Q_FOREACH(qint32 msgId, msgIds)
     {
-        simpleIds.append(QmlUtils::getSeparateMessageId(msgId));
-        MessageObject *msgObj = p->messages.value(msgId);
+        MessageObject *msgObj = p->messages.value(QmlUtils::getUnifiedMessageKey(msgId, peer->channelId()));
         if(msgObj)
         {
             p->database->deleteMessage(msgId);
@@ -1888,7 +1886,21 @@ void TelegramQml::deleteMessages(QList<qint64> msgIds)
             Q_EMIT messagesChanged(false);
         }
     }
-    p->telegram->messagesDeleteMessages(simpleIds);
+    switch(peer->classType())
+    {
+    case Peer::typePeerChannel:
+        {
+            const InputPeer & input = getInputPeer(peer->channelId());
+            InputChannel channel(InputChannel::typeInputChannel);
+            channel.setChannelId(input.channelId());
+            channel.setAccessHash(input.accessHash());
+            p->telegram->channelsDeleteMessages(channel, msgIds);
+        }
+        break;
+    default:
+        p->telegram->messagesDeleteMessages(msgIds);
+        break;
+    }
 }
 
 void TelegramQml::messagesCreateChat(const QList<int> &users, const QString &topic)
@@ -2620,10 +2632,7 @@ void TelegramQml::cleanUpMessages()
 
 void TelegramQml::updatesGetState()
 {
-    if(!p->telegram)
-        return;
-
-    if (!p->telegram->isConnected())
+    if(!p->telegram || !p->telegram->isConnected())
         return;
 
     p->telegram->updatesGetState();
@@ -2634,7 +2643,8 @@ void TelegramQml::updatesGetDifference()
     if(!p->telegram)
         return;
 
-    p->telegram->updatesGetDifference(p->state.pts(), p->state.date(), p->state.qts());
+    UpdatesStateObject currentState = p->syncManager->getState();
+    p->telegram->updatesGetDifference(currentState.pts(), currentState.date(), currentState.qts());
 }
 
 void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHash)
@@ -2648,7 +2658,8 @@ void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHas
     ChannelMessagesFilter filter = ChannelMessagesFilter();
     channel.setChannelId(channelId);
     channel.setAccessHash(accessHash);
-    p->telegram->updatesGetChannelDifference(channel, filter, p->state.pts(), 500);
+    UpdatesStateObject currentState = p->syncManager->getState(channelId);
+    p->telegram->updatesGetChannelDifference(channel, filter, currentState.pts(), 50);
 }
 
 bool TelegramQml::sleep()
@@ -3920,18 +3931,13 @@ void TelegramQml::messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStic
     const QList<StickerSet> &sets = stickers.sets();
     Q_FOREACH(const StickerSet &set, sets)
     {
-        const QMap<QString, QVariant> map = set.toMap();
-        qWarning() << "Installing sticker set: ";
-        Q_FOREACH(auto mapElement, map.keys())
-            qWarning() << mapElement << ": " << map.values(mapElement);
-        //insertStickerSet(set);
+        insertStickerSet(set);
         p->installedStickerSets.insert(set.id());
-        //p->stickerShortIds[set.shortName()] = set.id();
+        p->stickerShortIds[set.shortName()] = set.id();
         InputStickerSet iSet(InputStickerSet::typeInputStickerSetID);
         iSet.setAccessHash(set.accessHash());
         iSet.setId(set.id());
-        auto msgId = p->telegram->messagesGetStickerSet(iSet);
-        qWarning() << "Sticker " << set.shortName() << " requested in msg id " << msgId;
+        p->telegram->messagesGetStickerSet(iSet);
     }
 
 
@@ -4179,13 +4185,16 @@ void TelegramQml::updatesGetState_slt(qint64 msgId, const UpdatesState &result)
 {
     Q_UNUSED(msgId)
 
-    p->state.setDate(result.date());
-    p->state.setPts(result.pts());
-    p->state.setQts(result.qts());
-    p->state.setSeq(result.seq());
-    p->state.setUnreadCount(result.unreadCount());
+    if(!p->syncManager->isSynced(result))
+        QTimer::singleShot(500, this, SLOT(updatesGetDifference()));
 
-    QTimer::singleShot(100, this, SLOT(updatesGetDifference()));
+//    p->state.setDate(result.date());
+//    p->state.setPts(result.pts());
+//    p->state.setQts(result.qts());
+//    p->state.setSeq(result.seq());
+//    p->state.setUnreadCount(result.unreadCount());
+//    QTimer::singleShot(100, this, SLOT(updatesGetDifference()));
+
 }
 
 void TelegramQml::uploadGetFile_slt(qint64 id, const StorageFileType &type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total)
@@ -4713,13 +4722,15 @@ void TelegramQml::insertUpdate(const Update &update)
     case Update::typeUpdateDcOptions:
         break;
 
+    case Update::typeUpdateDeleteChannelMessages:
     case Update::typeUpdateDeleteMessages:
     {
         const QList<qint32> &messages = update.messages();
         Q_FOREACH(quint64 msgId, messages)
         {
-            p->database->deleteMessage(msgId);
-            insertToGarbeges(p->messages.value(msgId));
+            auto unifiedId = QmlUtils::getUnifiedMessageKey(msgId, update.channelId());
+            p->database->deleteMessage(unifiedId);
+            insertToGarbeges(p->messages.value(unifiedId));
 
             Q_EMIT messagesChanged(false);
         }

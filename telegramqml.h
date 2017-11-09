@@ -330,7 +330,7 @@ public Q_SLOTS:
     void addContacts(const QVariantList &vcontacts);
 
     void forwardMessages(QList<int> msgIds, qint32 toPeerId, PeerObject *fromPeer );
-    void deleteMessages(QList<qint64> msgIds );
+    void deleteMessages(const QList<int> msgIds , PeerObject *peer);
 
     void messagesCreateChat(const QList<int> &users, const QString & topic );
     void messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLimit = 0);

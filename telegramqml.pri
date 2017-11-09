@@ -60,7 +60,8 @@ SOURCES += \
     $$PWD/documentattributelist.cpp \
     $$PWD/tgabstractlistmodel.cpp \
     $$PWD/databaseabstractencryptor.cpp \
-    $$PWD/utils.cpp
+    $$PWD/utils.cpp \
+    $$PWD/syncmanager.cpp
 
 HEADERS += \
     $$PWD/telegramqml_plugin.h \
@@ -97,7 +98,8 @@ HEADERS += \
     $$PWD/documentattributelist.h \
     $$PWD/tgabstractlistmodel.h \
     $$PWD/databaseabstractencryptor.h \
-    $$PWD/utils.h
+    $$PWD/utils.h \
+    $$PWD/syncmanager.h
 
 RESOURCES += \
     $$PWD/tqmlresource.qrc
