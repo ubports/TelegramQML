@@ -6088,14 +6088,6 @@ public:
         Q_EMIT unreadCountChanged();
     }
 
-    bool operator== ( const UpdatesStateObject  *another) {
-        return _date == another->date() &&
-                _pts == another->pts() &&
-                _qts == another->qts() &&
-                _seq == another->seq() &&
-                _unreadCount == another->unreadCount();
-    }
-
 Q_SIGNALS:
     void changed();
     void dateChanged();

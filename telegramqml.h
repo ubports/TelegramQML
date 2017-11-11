@@ -374,7 +374,7 @@ public Q_SLOTS:
 
     void updatesGetState();
     void updatesGetDifference();
-    void updatesGetChannelDifference(qint32 channelId, qint64 accessHash);
+    void updatesGetChannelDifference();
 
     bool sleep();
     bool wake();
@@ -560,12 +560,17 @@ private Q_SLOTS:
     void updates_slt(const QList<Update> & udts, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seq);
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
+    void updatesGetDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
     void updatesGetChannelDifference_slt(qint64 msgId, const UpdatesChannelDifference &result);
+    void updatesGetChannelDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
     void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
+    void updatesGetState_err(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void uploadGetFile_slt(qint64 id, const StorageFileType & type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total);
     void uploadSendFile_slt(qint64 fileId, qint32 partId, qint32 uploaded, qint32 totalSize);
     void uploadCancelFile_slt(qint64 fileId, bool cancelled);
+
+    void onConnectedChanged();
 
     void fatalError_slt();
 
@@ -637,6 +642,7 @@ private Q_SLOTS:
 
 private:
     TelegramQmlPrivate *p;
+    void checkUpdateSyncState(qint32 seq, qint32 date);
 };
 
 Q_DECLARE_METATYPE(TelegramQml*)
