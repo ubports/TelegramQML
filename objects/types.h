@@ -2476,7 +2476,6 @@ class TELEGRAMQMLSHARED_EXPORT VideoObject : public TqObject
     Q_PROPERTY(qint32 h READ h WRITE setH NOTIFY hChanged)
     Q_PROPERTY(qint32 size READ size WRITE setSize NOTIFY sizeChanged)
     Q_PROPERTY(qint64 accessHash READ accessHash WRITE setAccessHash NOTIFY accessHashChanged)
-    Q_PROPERTY(qint32 userId READ userId WRITE setUserId NOTIFY userIdChanged)
     Q_PROPERTY(qint32 w READ w WRITE setW NOTIFY wChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
@@ -2596,18 +2595,6 @@ public:
         Q_EMIT changed();
     }
 
-    qint32 userId() const {
-        return _userId;
-    }
-
-    void setUserId(qint32 value) {
-        if( value == _userId )
-            return;
-        _userId = value;
-        Q_EMIT userIdChanged();
-        Q_EMIT changed();
-    }
-
     qint32 w() const {
         return _w;
     }
@@ -2667,7 +2654,6 @@ Q_SIGNALS:
     void hChanged();
     void sizeChanged();
     void accessHashChanged();
-    void userIdChanged();
     void wChanged();
     void classTypeChanged();
 

@@ -200,15 +200,6 @@ QSize TelegramFileHandler::imageSize() const
             result = QSize(doc->thumb()->w(), doc->thumb()->h());
     }
         break;
-
-    case TypeTargetMediaOther:
-        break;
-    case TypeTargetChatPhoto:
-        break;
-    case TypeTargetUserPhoto:
-        break;
-    case TypeTargetActionChatPhoto:
-        break;
     }
 
     return result;
@@ -253,15 +244,6 @@ qint64 TelegramFileHandler::fileSize() const
             result = doc->size();
     }
         break;
-
-    case TypeTargetMediaOther:
-        break;
-    case TypeTargetChatPhoto:
-        break;
-    case TypeTargetUserPhoto:
-        break;
-    case TypeTargetActionChatPhoto:
-        break;
     }
 
     return result;
@@ -275,6 +257,7 @@ QString TelegramFileHandler::fileName() const
 
     switch(p->targetType)
     {
+    case TypeTargetMediaGif:
     case TypeTargetMediaPhoto:
     case TypeTargetMediaAudio:
     case TypeTargetMediaVideo:
