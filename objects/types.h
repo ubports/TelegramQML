@@ -2680,7 +2680,6 @@ private:
     qint32 _h;
     qint32 _size;
     qint64 _accessHash;
-    qint32 _userId;
     qint32 _w;
     quint32 _classType;
 
@@ -3977,6 +3976,7 @@ class TELEGRAMQMLSHARED_EXPORT DialogObject : public TqObject
     Q_PROPERTY(bool encrypted READ encrypted WRITE setEncrypted NOTIFY encryptedChanged)
     Q_PROPERTY(QStringList typingUsers READ typingUsers WRITE setTypingUsers NOTIFY typingUsersChanged)
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+    Q_PROPERTY(qint32 pts READ pts WRITE setPts NOTIFY ptsChanged)
 
 public:
     DialogObject(const Dialog & another, QObject *parent = 0) : TqObject(parent){
@@ -3987,8 +3987,9 @@ public:
         _unreadCount = another.unreadCount();
         _encrypted = false;
         _classType = another.classType();
-
+        _pts = another.pts();
     }
+
     DialogObject(QObject *parent = 0) :
         TqObject(parent),
         _peer(0),
@@ -4079,6 +4080,17 @@ public:
         Q_EMIT changed();
     }
 
+    qint32 pts() const {
+        return _pts;
+    }
+
+    void setPts(qint32 value) {
+        if( value == _pts )
+            return;
+        _pts = value;
+        Q_EMIT ptsChanged();
+        Q_EMIT changed();
+    }
 
     void operator= ( const Dialog & another) {
         *_peer = another.peer();
@@ -4093,6 +4105,8 @@ public:
         Q_EMIT typingUsersChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
+        _pts = another.pts();
+        Q_EMIT ptsChanged();
 
     }
 
@@ -4105,6 +4119,7 @@ Q_SIGNALS:
     void encryptedChanged();
     void typingUsersChanged();
     void classTypeChanged();
+    void ptsChanged();
 
 private:
     PeerObject* _peer;
@@ -4114,7 +4129,7 @@ private:
     bool _encrypted;
     QStringList _typingUsers;
     quint32 _classType;
-
+    qint32 _pts;
 };
 
 Q_DECLARE_METATYPE(DialogObject*)

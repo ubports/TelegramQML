@@ -145,8 +145,8 @@ void DatabaseCore::insertDialog(const DbDialog &ddialog, bool encrypted)
     begin();
     const Dialog &dialog = ddialog.dialog;
     QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Dialogs (peer, peerType, topMessage, unreadCount, encrypted) "
-                  "VALUES (:peer, :peerType, :topMessage, :unreadCount, :encrypted);");
+    query.prepare("INSERT OR REPLACE INTO Dialogs (peer, peerType, topMessage, unreadCount, encrypted, pts) "
+                  "VALUES (:peer, :peerType, :topMessage, :unreadCount, :encrypted, :pts);");
 
     if (dialog.peer().classType()==Peer::typePeerChat)
         query.bindValue(":peer", dialog.peer().chatId());
@@ -158,6 +158,7 @@ void DatabaseCore::insertDialog(const DbDialog &ddialog, bool encrypted)
     query.bindValue(":topMessage",dialog.topMessage());
     query.bindValue(":unreadCount",dialog.unreadCount());
     query.bindValue(":encrypted",encrypted );
+    query.bindValue(":pts", dialog.pts());
 
     bool res = query.exec();
     if(!res)
@@ -531,6 +532,7 @@ void DatabaseCore::readDialogs()
             dpeer.peer.setChatId(dpeer.peer.userId());
             dpeer.peer.setUserId(0);
         }
+        dialog.setPts(record.value("pts").toLongLong());
 
         readMessages(dpeer, 0, 1);
         Q_EMIT dialogFounded(ddlg, encrypted );
@@ -814,6 +816,16 @@ void DatabaseCore::update_db()
         db_version = 7;
     }
 
+    if (db_version == 7)
+    {
+        qWarning() << "Databasecore: updating db to version 8...";
+        QSqlQuery query(db);
+        query.prepare("ALTER TABLE dialogs ADD COLUMN pts BIGINT");
+        query.exec();
+
+        db_version = 8;
+    }
+
     setValue("version", QString::number(db_version) );
 }
 
@@ -1014,7 +1026,7 @@ void DatabaseCore::insertVideo(const Video &video)
 
     begin();
     QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Videos (id, dcId, caption, mimeType, date, duration, h, size, accessHash, userId, w, type) "
+    query.prepare("INSERT OR REPLACE INTO Videos (id, dcId, caption, mimeType, date, duration, h, size, accessHash, w, type) "
                   "VALUES (:id, :dcId, :caption, :mimeType, :date, :duration, :h, :size, :accessHash, :w, :type);");
 
     query.bindValue(":id", video.id());

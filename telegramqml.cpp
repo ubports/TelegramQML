@@ -2661,18 +2661,20 @@ void TelegramQml::updatesGetChannelDifference()
 
     Q_FOREACH(ChatObject *chat, p->chats)
     {
-        if (chat->classType() == Chat::typeChannel)
+        if (chat->classType() == Chat::typeChannel && p->dialogs.contains(chat->id()))
         {
             auto currentState = p->syncManager->getState(chat->id());
             if(currentState.pts() == 0)
-                currentState.setPts(p->syncManager->getState().pts());
+            {
+                currentState.setPts(p->dialogs[chat->id()]->pts());
+                p->syncManager->setState(currentState, chat->id());
+            }
             InputChannel channel(InputChannel::typeInputChannel);
             channel.setChannelId(chat->id());
             channel.setAccessHash(chat->accessHash());
             auto msgId = p->telegram->updatesGetChannelDifference(channel, ChannelMessagesFilter(), currentState.pts(), 50);
             p->pending_channelDiffs[msgId] = chat->id();
         }
-
     }
 
 }
@@ -4248,7 +4250,7 @@ void TelegramQml::updatesGetChannelDifference_slt(qint64 msgId, const UpdatesCha
         auto newState = p->syncManager->getState(channelId);
         if(newState.pts() != result.pts())
         {
-            qWarning() << "updatesGetChannelDifference_slt: new pts " << result.pts() << " for channel " << channelId;
+            qWarning() << "updatesGetChannelDifference_slt: old pts: " << newState.pts() << ", new pts: " << result.pts() << " for channel " << channelId;
             newState.setPts(result.pts());
             p->syncManager->setState(newState, channelId);
         }
