@@ -5444,6 +5444,9 @@ public:
         return _unifiedId;
     }
 
+    bool operator== (const MessageObject *that);
+
+
     void operator= ( const Message & another) {
         _id = another.id();
         Q_EMIT idChanged();

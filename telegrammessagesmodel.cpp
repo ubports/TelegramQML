@@ -206,10 +206,12 @@ void TelegramMessagesModel::refresh()
 
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
+    if (p->telegram->connected())
+    {
     tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
-    //tgObject->updatesGetChannelDifference(peer.channelId(), peer.accessHash());
-
-    p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
+    }
+    else
+        p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
 }
 
 void TelegramMessagesModel::loadMore(bool force)
@@ -245,11 +247,10 @@ void TelegramMessagesModel::loadMore(bool force)
     if (p->telegram->connected())
     {
         tgObject->messagesGetHistory(peer, p->load_count, 0, p->load_limit, p->maxId, 0);
-        //tgObject->updatesGetChannelDifference(peer.channelId(), peer.accessHash());
         p->refreshing = true;
     }
-
-    p->telegram->database()->readMessages(TelegramMessagesModel::peer(), p->load_count, p->stepCount);
+    else
+        p->telegram->database()->readMessages(TelegramMessagesModel::peer(), p->load_count, p->stepCount);
 
     Q_EMIT refreshingChanged();
 }

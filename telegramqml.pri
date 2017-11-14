@@ -61,7 +61,8 @@ SOURCES += \
     $$PWD/tgabstractlistmodel.cpp \
     $$PWD/databaseabstractencryptor.cpp \
     $$PWD/utils.cpp \
-    $$PWD/syncmanager.cpp
+    $$PWD/syncmanager.cpp \
+    $$PWD/objects/types.cpp
 
 HEADERS += \
     $$PWD/telegramqml_plugin.h \

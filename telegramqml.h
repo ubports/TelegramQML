@@ -548,7 +548,7 @@ private Q_SLOTS:
     void messagesInstallStickerSet_slt(qint64 msgId, bool ok);
     void messagesUninstallStickerSet_slt(qint64 msgId, bool ok);
 
-    void messagesGetStickerSetError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
+    void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void channelsGetDialogs_slt(qint64 id, const MessagesDialogs &result);
 
