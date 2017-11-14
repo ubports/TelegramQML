@@ -2023,8 +2023,8 @@ void TelegramQml::messagesDeleteHistory(qint64 peerId, bool deleteChat, bool use
             channel.setChannelId(input.channelId());
             channel.setAccessHash(input.accessHash());
             p->telegram->channelsLeaveChannel(channel);
-            insertToGarbeges(chats[peerId]);
-            insertToGarbeges(dialogs[peerId]);
+            insertToGarbeges(p->chats[peerId]);
+            insertToGarbeges(p->dialogs[peerId]);
         } else {
             messagesGetFullChat(peerId);
         }
