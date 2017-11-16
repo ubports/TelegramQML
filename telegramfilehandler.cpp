@@ -547,7 +547,7 @@ void TelegramFileHandler::emitPathChanges()
     Q_EMIT thumbPathChanged();
 }
 
-/*! Recersive Function !*/
+/*! Recursive Function !*/
 FileLocationObject *TelegramFileHandler::analizeObject(QObject *target, int *targetType, QObject **targetPointer)
 {
     if(!p->telegram || !target)
