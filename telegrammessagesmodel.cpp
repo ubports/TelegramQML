@@ -246,7 +246,7 @@ void TelegramMessagesModel::loadMore(bool force)
 
     if (p->telegram->connected())
     {
-        tgObject->messagesGetHistory(peer, p->load_count, 0, p->load_limit, p->maxId, 0);
+        tgObject->messagesGetHistory(peer, 0, p->load_count, p->load_limit, p->maxId, 0);
         p->refreshing = true;
     }
     else
