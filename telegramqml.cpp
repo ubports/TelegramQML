@@ -4724,13 +4724,6 @@ void TelegramQml::insertUpdate(const Update &update)
         msg.setToId(peer);
         msg.setMessage(msgObj->message());
         msg.setReplyToMsgId(msgObj->replyToMsgId());
-
-        qint64 did = msg.toId().chatId();
-        if( !did )
-            did = msg.toId().channelId();
-        if( !did )
-            did = FLAG_TO_OUT(msg.flags())? msg.toId().userId() : msg.fromId();
-
         insertToGarbeges(p->messages.value(old_msgId));
         insertMessage(msg);
         //timerUpdateDialogs(3000);

@@ -999,7 +999,7 @@ void DatabaseCore::insertAudio(const Audio &audio)
 
     begin();
     QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Audios (id, dcId, mimeType, duration, date, size, accessHash, userId, type) "
+    query.prepare("INSERT OR REPLACE INTO Audios (id, dcId, mimeType, duration, date, size, accessHash, type) "
                   "VALUES (:id, :dcId, :mimeType, :duration, :date, :size, :accessHash, :type);");
 
     query.bindValue(":id", audio.id());
@@ -1064,8 +1064,8 @@ void DatabaseCore::insertDocument(const Document &document)
 
     begin();
     QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Documents (id, dcId, mimeType, date, fileName, size, accessHash, userId, type) "
-                  "VALUES (:id, :dcId, :mimeType, :date, :fileName, :size, :accessHash, :userId, :type);");
+    query.prepare("INSERT OR REPLACE INTO Documents (id, dcId, mimeType, date, fileName, size, accessHash, type) "
+                  "VALUES (:id, :dcId, :mimeType, :date, :fileName, :size, :accessHash, :type);");
 
     query.bindValue(":id", document.id());
     query.bindValue(":dcId", document.dcId());
@@ -1074,7 +1074,6 @@ void DatabaseCore::insertDocument(const Document &document)
     query.bindValue(":fileName", fileName);
     query.bindValue(":size", document.size());
     query.bindValue(":accessHash", document.accessHash());
-    query.bindValue(":userId", 0);
     query.bindValue(":type", document.classType());
 
     bool res = query.exec();
