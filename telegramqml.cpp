@@ -783,20 +783,10 @@ void TelegramQml::unmute(qint64 peerId) {
 }
 
 void TelegramQml::accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil) {
-    InputPeer::InputPeerClassType inputPeerType = getInputPeerType(peerId);
-    InputPeer peer(inputPeerType);
-    if(inputPeerType == InputPeer::typeInputPeerChat)
-        peer.setChatId(peerId);
-    else if(inputPeerType == InputPeer::typeInputPeerChannel)
-        peer.setChannelId(peerId);
-    else
-        peer.setUserId(peerId);
-    UserObject *user = p->users.value(peerId);
-    if(user && user->accessHash())
-        peer.setAccessHash(user->accessHash());
 
+    InputPeer inputPeer = getInputPeer(peerId);
     InputNotifyPeer inputNotifyPeer(InputNotifyPeer::typeInputNotifyPeer);
-    inputNotifyPeer.setPeer(peer);
+    inputNotifyPeer.setPeer(inputPeer);
 
     InputPeerNotifySettings settings;
     settings.setMuteUntil(muteUntil);
@@ -2965,6 +2955,8 @@ void TelegramQml::try_init()
 
     connect( p->telegram, &Telegram::updatesGetStateAnswer, this, &TelegramQml::updatesGetState_slt);
     connect( p->telegram, &Telegram::updatesGetStateError, this, &TelegramQml::onServerError);
+
+    connect( p->telegram, &Telegram::accountUpdateNotifySettingsError, this, &TelegramQml::onServerError);
 
 
     connect( p->telegram, &Telegram::uploadGetFileAnswer, this, &TelegramQml::uploadGetFile_slt);
