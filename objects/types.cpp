@@ -23,5 +23,6 @@ bool MessageObject::operator==(const MessageObject *that)
         this->_fwdFromId == that->_fwdFromId &&
         this->_replyToMsgId == that->_replyToMsgId &&
         this->_message == that->_message &&
-        this->_classType == that->_classType;
+        this->_classType == that->_classType &&
+        this->_views == that->_views;
 }
