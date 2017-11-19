@@ -5214,6 +5214,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
+    Q_PROPERTY(quint32 views READ views WRITE setViews NOTIFY viewsChanged)
 
 public:
     MessageObject(const Message & another, QObject *parent = 0) : TqObject(parent){
@@ -5235,6 +5236,7 @@ public:
         _message = another.message();
         _classType = another.classType();
         _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
+        _views = another.views();
     }
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
@@ -5444,6 +5446,18 @@ public:
         return _unifiedId;
     }
 
+    quint32 views() {
+        return _views;
+    }
+
+    void setViews(quint32 value) {
+        if( value == _views )
+            return;
+        _views = value;
+        Q_EMIT viewsChanged();
+        Q_EMIT changed();
+    }
+
     bool operator== (const MessageObject *that);
 
 
@@ -5478,6 +5492,8 @@ public:
         Q_EMIT classTypeChanged();
         _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         Q_EMIT unifiedIdChanged();
+        _views = another.views();
+        Q_EMIT viewsChanged();
     }
 
 Q_SIGNALS:
@@ -5499,6 +5515,7 @@ Q_SIGNALS:
     void messageChanged();
     void classTypeChanged();
     void unifiedIdChanged();
+    void viewsChanged();
 
 private:
     qint32 _id;
@@ -5518,6 +5535,7 @@ private:
     QString _message;
     qint32 _classType;
     qint64 _unifiedId;
+    quint32 _views;
 
 };
 

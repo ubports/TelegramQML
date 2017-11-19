@@ -192,8 +192,8 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     begin();
     const Message &message = dmessage.message;
     QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Messages (id, toId, toPeerType, unread, fromId, out, date, fwdDate, fwdFromId, replyToMsgId, message, actionUserId, actionPhoto, actionTitle, actionUsers, actionType, mediaAudio, mediaLastName, mediaFirstName, mediaPhoneNumber, mediaDocument, mediaGeo, mediaPhoto, mediaUserId, mediaVideo, mediaType) "
-                  "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType);");
+    query.prepare("INSERT OR REPLACE INTO Messages (id, toId, toPeerType, unread, fromId, out, date, fwdDate, fwdFromId, replyToMsgId, message, actionUserId, actionPhoto, actionTitle, actionUsers, actionType, mediaAudio, mediaLastName, mediaFirstName, mediaPhoneNumber, mediaDocument, mediaGeo, mediaPhoto, mediaUserId, mediaVideo, mediaType, views) "
+                  "VALUES (:id, :toId, :toPeerType, :unread, :fromId, :out, :date, :fwdDate, :fwdFromId, :replyToMsgId, :message, :actionUserId, :actionPhoto, :actionTitle, :actionUsers, :actionType, :mediaAudio, :mediaLastName, :mediaFirstName, :mediaPhoneNumber, :mediaDocument, :mediaGeo, :mediaPhoto, :mediaUserId, :mediaVideo, :mediaType, :views);");
 
     query.bindValue(":id", message.id());
     qint32 toId = 0;
@@ -221,6 +221,8 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":replyToMsgId",message.replyToMsgId() );
     query.bindValue(":message", ENCRYPTER->encrypt(message.message(), encrypted) );
 
+    query.bindValue(":views",message.views() );
+
     const MessageAction &action = message.action();
     query.bindValue(":actionUserId",action.userId() );
     query.bindValue(":actionPhoto",action.photo().id() );
@@ -240,6 +242,8 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":mediaPhoto",media.photo().id() );
     query.bindValue(":mediaVideo",media.video().id() );
     query.bindValue(":mediaAudio",media.audio().id() );
+
+
 
     bool res = query.exec();
     if(!res)
@@ -398,7 +402,7 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         message.setFwdFromId(fwdFromPeer);
         message.setReplyToMsgId( record.value("replyToMsgId").toLongLong() );
         message.setMessage( ENCRYPTER->decrypt(record.value("message")) );
-
+        message.setViews(record.value("views").toLongLong());
         DbMessage dmsg;
         dmsg.message = message;
 
@@ -690,8 +694,8 @@ void DatabaseCore::readContacts()
 void DatabaseCore::reconnect()
 {
     db.open();
-    update_db();
     init_buffer();
+    update_db();
 }
 
 void DatabaseCore::init_buffer()
@@ -824,6 +828,16 @@ void DatabaseCore::update_db()
         query.exec();
 
         db_version = 8;
+    }
+
+    if (db_version == 8)
+    {
+        qWarning() << "Databasecore: updating db to version 9...";
+        QSqlQuery query(db);
+        query.prepare("ALTER TABLE messages ADD COLUMN views BIGINT");
+        query.exec();
+
+        db_version = 9;
     }
 
     setValue("version", QString::number(db_version) );
@@ -1221,8 +1235,8 @@ Video DatabaseCore::readVideo(qint64 id)
 
     video.setId( record.value("id").toLongLong() );
     video.setDcId( record.value("dcId").toLongLong() );
-//    video.setMimeType( record.value("mimeType").toString() );
-//    video.setCaption( record.value("caption").toString() );
+    video.setMimeType( record.value("mimeType").toString() );
+    //video.setCaption( record.value("caption").toString() );
     video.setDate( record.value("date").toLongLong() );
     video.setDuration( record.value("duration").toLongLong() );
     video.setSize( record.value("size").toLongLong() );
