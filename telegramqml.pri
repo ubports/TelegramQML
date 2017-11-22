@@ -24,7 +24,7 @@ win32 {
         LIBS += -L$${LIBQTELEGRAM_LIB_DIR} -lqtelegram-ae
     }
 
-    INCLUDEPATH += $${LIBQTELEGRAM_INCLUDE_PATH} $${OPENSSL_INCLUDE_PATH}
+    INCLUDEPATH += $${LIBQTELEGRAM_INCLUDE_PATH} $${OPENSSL_INCLUDE_PATH} ../libqtelegram-ae
 }
 
 # Input

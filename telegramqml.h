@@ -230,6 +230,7 @@ public:
     Q_INVOKABLE void mute(qint64 peerId);
     Q_INVOKABLE void unmute(qint64 peerId);
     void accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil);
+    Q_INVOKABLE void channelsJoinChannel(QString url);
 
     void setGlobalMute(bool stt);
     bool globalMute() const;

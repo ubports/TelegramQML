@@ -794,6 +794,34 @@ void TelegramQml::accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil) {
     p->telegram->accountUpdateNotifySettings(inputNotifyPeer, settings);
 }
 
+void TelegramQml::channelsJoinChannel(QString url)
+{
+    qWarning() << "User clicked on channel join link, trying to join...";
+
+    if (url.contains("telegram.me/joinchat") || url.contains("t.me/joinchat"))
+    {
+        QString hash = url.split("/")[(url.split("/").length())-1];
+        p->telegram->messagesImportChatInvite(hash);
+    } else if (url.contains("telegram.me/") || url.contains("t.me/"))
+    {
+        QString username = url.split("/")[(url.split("/").length())-1];
+        qint64 msgId;
+        ContactsResolvedPeer result;
+        TelegramCore::CallbackError error;
+        TelegramCore::Callback<ContactsResolvedPeer> callback = [this](TG_CONTACTS_RESOLVE_USERNAME_CALLBACK) {
+            if(!error.null) {
+                onServerError(msgId, error.errorCode, error.errorText);
+                return;
+            }
+            InputChannel newChannel(InputChannel::typeInputChannel);
+            newChannel.setChannelId(result.chats()[0].id());
+            newChannel.setAccessHash(result.chats()[0].accessHash());
+            p->telegram->channelsJoinChannel(newChannel);
+        };
+        p->telegram->contactsResolveUsername(username, callback);
+    }
+}
+
 void TelegramQml::setGlobalMute(bool stt)
 {
     if(p->globalMute == stt)
@@ -2929,16 +2957,12 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::messagesInstallStickerSetAnswer, this, &TelegramQml::messagesInstallStickerSet_slt);
     connect( p->telegram, &Telegram::messagesUninstallStickerSetAnswer, this, &TelegramQml::messagesUninstallStickerSet_slt);
 
-    connect( p->telegram, &Telegram::messagesGetStickerSetError, this, &TelegramQml::onServerError);
-
     connect( p->telegram, &Telegram::contactsGetContactsAnswer, this, &TelegramQml::contactsGetContacts_slt);
 
     connect( p->telegram, &Telegram::channelsGetDialogsAnswer, this, &TelegramQml::channelsGetDialogs_slt);
     connect( p->telegram, &Telegram::channelsGetFullChannelAnswer, this, &TelegramQml::messagesGetFullChat_slt);
     connect( p->telegram, &Telegram::channelsGetImportantHistoryAnswer, this, &TelegramQml::messagesGetHistory_slt);
     connect( p->telegram, &Telegram::channelsGetMessagesAnswer, this, &TelegramQml::messagesGetMessages_slt);
-    connect( p->telegram, &Telegram::channelsLeaveChannelError, this, &TelegramQml::onServerError);
-
 
     connect( p->telegram, &Telegram::updates, this, &TelegramQml::updates_slt);
     connect( p->telegram, &Telegram::updatesCombined, this, &TelegramQml::updatesCombined_slt);
@@ -2951,13 +2975,8 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::updatesGetDifferenceError, this, &TelegramQml::updatesGetDifference_err);
 
     connect( p->telegram, &Telegram::updatesGetChannelDifferenceAnswer, this, &TelegramQml::updatesGetChannelDifference_slt);
-    connect( p->telegram, &Telegram::updatesGetChannelDifferenceError, this, &TelegramQml::onServerError);
 
     connect( p->telegram, &Telegram::updatesGetStateAnswer, this, &TelegramQml::updatesGetState_slt);
-    connect( p->telegram, &Telegram::updatesGetStateError, this, &TelegramQml::onServerError);
-
-    connect( p->telegram, &Telegram::accountUpdateNotifySettingsError, this, &TelegramQml::onServerError);
-
 
     connect( p->telegram, &Telegram::uploadGetFileAnswer, this, &TelegramQml::uploadGetFile_slt);
     connect( p->telegram, &Telegram::uploadCancelFileAnswer, this, &TelegramQml::uploadCancelFile_slt);
@@ -2966,6 +2985,154 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::helpGetInviteTextAnswer, this, &TelegramQml::helpGetInviteTextAnswer);
 
     connect( p->telegram, &Telegram::fatalError, this, &TelegramQml::fatalError_slt, Qt::QueuedConnection);
+
+
+    //Connect all errors to a common error handler, helps a lot to spot unexpected problems!
+    connect( p->telegram, &Telegram::accountChangePhoneError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountCheckUsernameError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountDeleteAccountError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetAccountTTLError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetAuthorizationsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetNotifySettingsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetPasswordError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetPasswordSettingsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetPrivacyError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountGetWallPapersError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountRegisterDeviceError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountResetAuthorizationError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountResetNotifySettingsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountSendChangePhoneCodeError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountSetAccountTTLError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountSetPrivacyError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUnregisterDeviceError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUpdateDeviceLockedError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUpdateNotifySettingsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUpdatePasswordSettingsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUpdateProfileError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUpdateStatusError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::accountUpdateUsernameError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authBindTempAuthKeyError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authCheckPasswordError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authCheckPhoneError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authExportAuthorizationError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authImportAuthorizationError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authImportBotAuthorizationError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authLogOutError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authRecoverPasswordError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authRequestPasswordRecoveryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authResetAuthorizationsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authSendCallError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authSendCodeError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authSendInvitesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authSendSmsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authSignInError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::authSignUpError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsCheckUsernameError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsCreateChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsDeleteChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsDeleteMessagesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsDeleteUserHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsEditAboutError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsEditAdminError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsEditPhotoError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsEditTitleError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsExportInviteError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetChannelsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetDialogsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetFullChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetImportantHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetMessagesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetParticipantError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetParticipantsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsInviteToChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsJoinChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsKickFromChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsLeaveChannelError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsReadHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsReportSpamError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsToggleCommentsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsUpdateUsernameError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsBlockError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsDeleteContactError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsDeleteContactsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsExportCardError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsGetBlockedError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsGetContactsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsGetStatusesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsGetSuggestedError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsImportCardError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsImportContactsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsResolveUsernameError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsSearchError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::contactsUnblockError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpGetAppChangelogError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpGetAppUpdateError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpGetConfigError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpGetInviteTextError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpGetNearestDcError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpGetSupportError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::helpSaveAppLogError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesAcceptEncryptionError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesAddChatUserError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesCheckChatInviteError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesCreateChatError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesDeleteChatUserError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesDeleteHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesDeleteMessagesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesDiscardEncryptionError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesEditChatAdminError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesEditChatPhotoError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesEditChatTitleError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesExportChatInviteError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesForwardMessageError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesForwardMessagesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetAllStickersError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetChatsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetDhConfigError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetDialogsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetFullChatError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetMessagesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetMessagesViewsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetStickersError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetStickerSetError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetWebPagePreviewError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesImportChatInviteError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesInstallStickerSetError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesMigrateChatError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesReadEncryptedHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesReadHistoryError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesReadMessageContentsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesReceivedMessagesError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesReceivedQueueError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesReportSpamError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesRequestEncryptionError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSearchError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSearchGlobalError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSendBroadcastError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSendEncryptedError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSendEncryptedFileError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSendEncryptedServiceError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSendMediaError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSendMessageError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSetEncryptedTypingError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesSetTypingError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesStartBotError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesToggleChatAdminsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesUninstallStickerSetError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::photosDeletePhotosError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::photosGetUserPhotosError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::photosUpdateProfilePhotoError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::photosUploadProfilePhotoError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::updatesGetChannelDifferenceError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::updatesGetDifferenceError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::updatesGetStateError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::uploadGetFileError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::uploadSaveBigFilePartError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::uploadSaveFilePartError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::usersGetFullUserError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::usersGetUsersError, this, &TelegramQml::onServerError);
+
 
     Q_EMIT telegramChanged();
 
@@ -3360,6 +3527,7 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
         msg.setMedia(result.media());
         insertToGarbeges(p->messages.value(old_msgId));
         auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
+        qWarning() << "Inserting sent channel message " << msg.id();
         Q_EMIT messageSent(id, p->messages.value(unifiedId));
     }
     else
@@ -3559,6 +3727,8 @@ void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &resu
     Q_FOREACH( const Message & m, result.messages() )
     {
         //qWarning() << "Inserting message with date " << QDateTime::fromTime_t(m.date()).toString(Qt::TextDate);
+        if (m.media().document().accessHash())
+            qWarning() << "Received media with id=" << m.media().document().id() << " and access has " << m.media().document().accessHash();
         insertMessage(m);
     }
 
@@ -4725,6 +4895,7 @@ void TelegramQml::insertUpdate(const Update &update)
         msg.setMessage(msgObj->message());
         msg.setReplyToMsgId(msgObj->replyToMsgId());
         insertToGarbeges(p->messages.value(old_msgId));
+        qWarning() << "Inserting sent channel message " << msg.id();
         insertMessage(msg);
         //timerUpdateDialogs(3000);
     }
@@ -4762,9 +4933,6 @@ void TelegramQml::insertUpdate(const Update &update)
     }
         break;
 
-    case Update::typeUpdateEncryption:
-        break;
-
     case Update::typeUpdateUserName:
         if( user )
         {
@@ -4793,6 +4961,9 @@ void TelegramQml::insertUpdate(const Update &update)
         break;
 
     case Update::typeUpdateWebPage:
+        break;
+
+    case Update::typeUpdateEncryption:
         break;
 
     case Update::typeUpdateChatParticipantDelete:
@@ -4915,11 +5086,22 @@ void TelegramQml::insertUpdate(const Update &update)
         timerUpdateDialogs();
         break;
 
-    case Update::typeUpdateReadChannelInbox:
-    case Update::typeUpdateReadHistoryInbox:
+    case Update::typeUpdateChannelMessageViews:
+    {
+        qWarning() << "Received updated channel message views:";
+        auto dId = update.channelId();
+        auto msgId = update.message().id();
+        auto unifiedMsgId = QmlUtils::getUnifiedMessageKey(msgId, dId);
+        auto viewCount = update.views();
+
+    }
+        break;
+
+//    case Update::typeUpdateReadChannelInbox:
     case Update::typeUpdateReadHistoryOutbox:
     {
         const qint64 maxId = update.maxId();
+        qWarning() << "Max read message id is: " << maxId;
         const qint64 dId = update.channelId()? update.channelId() : update.peer().chatId()? update.peer().chatId() : update.peer().userId();
         const QList<qint64> &msgs = p->messages_list.value(dId);
         Q_FOREACH(qint64 msg, msgs)
@@ -4927,7 +5109,10 @@ void TelegramQml::insertUpdate(const Update &update)
             {
                 MessageObject *obj = p->messages.value(msg);
                 if(obj)
+                {
+                    qWarning() << "Marking message " << QmlUtils::getSeparateMessageId(msg) << " as read";
                     obj->setUnread(false);
+                }
             }
     }
         break;
