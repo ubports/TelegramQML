@@ -4190,7 +4190,7 @@ void TelegramQml::messagesUninstallStickerSet_slt(qint64 msgId, bool ok)
 void TelegramQml::updatesTooLong_slt()
 {
     //timerUpdateDialogs();
-    updatesGetDifference();
+    p->syncManager->requestSync();
 }
 
 void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out)
@@ -4310,7 +4310,7 @@ void TelegramQml::checkUpdateSyncState(qint32 seq, qint32 date)
     else
     {
         qWarning() << "checkUpdateSyncState detected seq gap " << currentState.seq() << " => " << seq;
-        updatesGetDifference();
+        p->syncManager->requestSync();
     }
 }
 
@@ -4374,7 +4374,7 @@ void TelegramQml::updatesGetDifference_slt(qint64 id, const QList<Message> &mess
     if (isIntermediateState)
     {
         qWarning() << "updatesGetDifference_slt: intermediate state, continuing to query at seq: " << state.seq();
-        updatesGetDifference();
+        p->syncManager->requestSync();
     }
     else
     {
@@ -4437,7 +4437,7 @@ void TelegramQml::updatesGetState_slt(qint64 msgId, const UpdatesState &result)
     if(!p->syncManager->isSynced(result))
     {
         qWarning() << "updatesGetState_slt: not synced";
-        QTimer::singleShot(500, this, SLOT(updatesGetDifference()));
+        p->syncManager->requestSync();
     }
 }
 
@@ -4957,29 +4957,14 @@ void TelegramQml::insertUpdate(const Update &update)
         Q_EMIT messagesReceived(1);
         break;
 
-    case Update::typeUpdateContactLink:
-        break;
-
-    case Update::typeUpdateWebPage:
-        break;
-
-    case Update::typeUpdateEncryption:
-        break;
-
     case Update::typeUpdateChatParticipantDelete:
         if(chat)
             chat->setParticipantsCount( chat->participantsCount()-1 );
         break;
 
-    case Update::typeUpdateNewAuthorization:
-        break;
-
     case Update::typeUpdateChatParticipantAdd:
         if(chat)
             chat->setParticipantsCount( chat->participantsCount()+1 );
-        break;
-
-    case Update::typeUpdateDcOptions:
         break;
 
     case Update::typeUpdateDeleteChannelMessages:
@@ -5097,7 +5082,6 @@ void TelegramQml::insertUpdate(const Update &update)
     }
         break;
 
-//    case Update::typeUpdateReadChannelInbox:
     case Update::typeUpdateReadHistoryOutbox:
     {
         const qint64 maxId = update.maxId();
@@ -5116,6 +5100,16 @@ void TelegramQml::insertUpdate(const Update &update)
             }
     }
         break;
+
+    //TODO: Currently ignored Updates, should be eventually implemented?
+    case Update::typeUpdateReadChannelInbox:
+    case Update::typeUpdateContactLink:
+    case Update::typeUpdateWebPage:
+    case Update::typeUpdateEncryption:
+    case Update::typeUpdateNewAuthorization:
+    case Update::typeUpdateDcOptions:
+        break;
+
     default:
 
         qWarning() << "Received unhandled updates type: " << update.classType();
