@@ -200,15 +200,6 @@ QSize TelegramFileHandler::imageSize() const
             result = QSize(doc->thumb()->w(), doc->thumb()->h());
     }
         break;
-
-    case TypeTargetMediaOther:
-        break;
-    case TypeTargetChatPhoto:
-        break;
-    case TypeTargetUserPhoto:
-        break;
-    case TypeTargetActionChatPhoto:
-        break;
     }
 
     return result;
@@ -253,15 +244,6 @@ qint64 TelegramFileHandler::fileSize() const
             result = doc->size();
     }
         break;
-
-    case TypeTargetMediaOther:
-        break;
-    case TypeTargetChatPhoto:
-        break;
-    case TypeTargetUserPhoto:
-        break;
-    case TypeTargetActionChatPhoto:
-        break;
     }
 
     return result;
@@ -275,6 +257,7 @@ QString TelegramFileHandler::fileName() const
 
     switch(p->targetType)
     {
+    case TypeTargetMediaGif:
     case TypeTargetMediaPhoto:
     case TypeTargetMediaAudio:
     case TypeTargetMediaVideo:
@@ -329,7 +312,7 @@ bool TelegramFileHandler::download()
     if(p->progressType != TypeProgressEmpty)
         return false;
 
-    InputFileLocation::InputFileLocationType type;
+    InputFileLocation::InputFileLocationClassType type;
     switch(p->targetType)
     {
     case TypeTargetMediaAudio:
@@ -564,7 +547,7 @@ void TelegramFileHandler::emitPathChanges()
     Q_EMIT thumbPathChanged();
 }
 
-/*! Recersive Function !*/
+/*! Recursive Function !*/
 FileLocationObject *TelegramFileHandler::analizeObject(QObject *target, int *targetType, QObject **targetPointer)
 {
     if(!p->telegram || !target)
@@ -595,10 +578,10 @@ FileLocationObject *TelegramFileHandler::analizeObject(QObject *target, int *tar
     case TypeObjectPeer:
     {
         PeerObject *peer = static_cast<PeerObject*>(target);
-        if(peer->classType() == Peer::typePeerChat)
-            object = p->telegram->chat(peer->chatId());
-        else
+        if(peer->classType() == Peer::typePeerUser)
             object = p->telegram->user(peer->userId());
+        else
+            object = p->telegram->chat(peer->chatId());
     }
         break;
 

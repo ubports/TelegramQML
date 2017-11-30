@@ -61,7 +61,7 @@ public:
     void setStepCount(int step);
     int stepCount() const;
 
-    Q_INVOKABLE int indexOf(qint64 msgId) const;
+    Q_INVOKABLE int indexOf(qint32 msgId, qint32 channelId) const;
 
     qint64 id( const QModelIndex &index ) const;
     int rowCount(const QModelIndex & parent = QModelIndex()) const;

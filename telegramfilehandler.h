@@ -84,7 +84,8 @@ public:
         TypeTargetMediaOther,
         TypeTargetChatPhoto,
         TypeTargetUserPhoto,
-        TypeTargetActionChatPhoto
+        TypeTargetActionChatPhoto,
+        TypeTargetMediaGif,
     };
 
     TelegramFileHandler(QObject *parent = 0);

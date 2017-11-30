@@ -43,6 +43,7 @@ object FileLocation {
 object Peer {
     qint32 chatId rw = another.%name();
     qint32 userId rw = another.%name();
+    qint32 channelId rw = another.%name();
     quint32 classType rw = another.%name();
 }
 
@@ -55,6 +56,7 @@ object Contact {
 object InputPeer {
     qint32 chatId rw = another.%name();
     qint32 userId rw = another.%name();
+    qint32 channelId rw = another.%name();
     qint64 accessHash rw = another.%name();
     quint32 classType rw = another.%name();
 }

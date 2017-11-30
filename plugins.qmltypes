@@ -675,7 +675,7 @@ Module {
         exports: ["TelegramQml/StickerPack 1.0"]
         exportMetaObjectRevisions: [0]
         Property { name: "emoticon"; type: "string" }
-        Property { name: "documents"; type: "QList<qint64>" }
+        Property { name: "documents"; type: "QList<int>" }
         Property { name: "classType"; type: "uint" }
         Signal { name: "changed" }
     }
@@ -982,7 +982,6 @@ Module {
         Property { name: "publicKeyFile"; type: "QUrl" }
         Property { name: "downloadPath"; type: "string" }
         Property { name: "tempPath"; type: "string" }
-        Property { name: "newsLetterDialog"; type: "QObject"; isPointer: true }
         Property { name: "autoAcceptEncrypted"; type: "bool" }
         Property { name: "autoCleanUpMessages"; type: "bool" }
         Property { name: "online"; type: "bool" }
@@ -992,7 +991,6 @@ Module {
         Property { name: "telegram"; type: "Telegram"; isReadonly: true; isPointer: true }
         Property { name: "userData"; type: "UserData"; isReadonly: true; isPointer: true }
         Property { name: "me"; type: "qlonglong"; isReadonly: true }
-        Property { name: "cutegramId"; type: "qlonglong"; isReadonly: true }
         Property { name: "myUser"; type: "UserObject"; isReadonly: true; isPointer: true }
         Property { name: "homePath"; type: "string"; isReadonly: true }
         Property { name: "currentPath"; type: "string"; isReadonly: true }
@@ -1105,7 +1103,7 @@ Module {
         }
         Signal {
             name: "searchDone"
-            Parameter { name: "messages"; type: "QList<qint64>" }
+            Parameter { name: "messages"; type: "QList<int>" }
         }
         Signal {
             name: "contactsFounded"
@@ -1217,7 +1215,6 @@ Module {
             name: "deleteMessages"
             Parameter { name: "msgIds"; type: "QList<int>" }
         }
-        Method { name: "deleteCutegramDialog" }
         Method {
             name: "messagesCreateChat"
             Parameter { name: "users"; type: "QList<int>" }
@@ -1704,7 +1701,7 @@ Module {
             name: "removeMessageUpdate"
             Parameter { name: "id"; type: "int" }
         }
-        Method { name: "messageUpdates"; type: "QList<quint64>" }
+        Method { name: "messageUpdates"; type: "QList<int>" }
         Method {
             name: "messageUpdateItem"
             type: "MessageUpdate"

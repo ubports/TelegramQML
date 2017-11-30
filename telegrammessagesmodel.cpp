@@ -21,7 +21,6 @@
 #include "telegrammessagesmodel.h"
 #include "telegramqml.h"
 #include "database.h"
-#include "newsletterdialog.h"
 #include "objects/types.h"
 
 #include <telegram.h>
@@ -119,7 +118,9 @@ void TelegramMessagesModel::setDialog(DialogObject *dlg)
 
     if( !p->dialog )
         return;
-    if( !p->dialog->peer()->chatId() && !p->dialog->peer()->userId() )
+    if( !p->dialog->peer()->chatId() &&
+        !p->dialog->peer()->userId() &&
+        !p->dialog->peer()->channelId())
         return;
 
     p->unreadCount = p->dialog->unreadCount();
@@ -158,9 +159,9 @@ int TelegramMessagesModel::stepCount() const
     return p->stepCount;
 }
 
-int TelegramMessagesModel::indexOf(qint64 msgId) const
+int TelegramMessagesModel::indexOf(qint32 msgId, qint32 channelId) const
 {
-    return p->messages.indexOf(msgId);
+    return p->messages.indexOf(QmlUtils::getUnifiedMessageKey(msgId, channelId));
 }
 
 void TelegramMessagesModel::init()
@@ -177,11 +178,8 @@ void TelegramMessagesModel::init()
     loadMore(true);
     messagesChanged(true);
 
-    if(p->dialog->peer()->userId() != NewsLetterDialog::cutegramId())
-    {
-        p->refreshing = true;
-        Q_EMIT refreshingChanged();
-    }
+    p->refreshing = true;
+    Q_EMIT refreshingChanged();
 }
 
 void TelegramMessagesModel::refresh()
@@ -208,10 +206,12 @@ void TelegramMessagesModel::refresh()
 
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
-    if(p->dialog->peer()->userId() != NewsLetterDialog::cutegramId())
-        tgObject->messagesGetHistory(peer, 0, p->maxId, p->stepCount );
-
-    p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
+    if (p->telegram->connected())
+    {
+    tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
+    }
+    else
+        p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
 }
 
 void TelegramMessagesModel::loadMore(bool force)
@@ -244,16 +244,13 @@ void TelegramMessagesModel::loadMore(bool force)
 
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
-    if(p->dialog->peer()->userId() != NewsLetterDialog::cutegramId())
+    if (p->telegram->connected())
     {
-        if (p->telegram->connected())
-        {
-            tgObject->messagesGetHistory(peer, p->load_count, p->maxId, p->load_limit );
-            p->refreshing = true;
-        }
+        tgObject->messagesGetHistory(peer, 0, p->load_count, p->load_limit, p->maxId, 0);
+        p->refreshing = true;
     }
-
-    p->telegram->database()->readMessages(TelegramMessagesModel::peer(), p->load_count, p->stepCount);
+    else
+        p->telegram->database()->readMessages(TelegramMessagesModel::peer(), p->load_count, p->stepCount);
 
     Q_EMIT refreshingChanged();
 }
@@ -266,8 +263,14 @@ void TelegramMessagesModel::sendMessage(const QString &msg, int inReplyTo)
         return;
 
     clearNewMessageFlag();
-    qint32 did = p->dialog->peer()->classType()==Peer::typePeerChat? p->dialog->peer()->chatId() : p->dialog->peer()->userId();
-    p->telegram->sendMessage(did, msg, inReplyTo);
+    qint64 dId;
+    if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        dId = p->dialog->peer()->channelId();
+    else if (p->dialog->peer()->classType()==Peer::typePeerChat)
+        dId = p->dialog->peer()->chatId();
+    else
+        dId = p->dialog->peer()->userId();
+    p->telegram->sendMessage(dId, msg, inReplyTo);
 }
 
 void TelegramMessagesModel::setReaded()
@@ -283,14 +286,20 @@ void TelegramMessagesModel::setReaded()
     qint32 topMessageId = p->dialog->topMessage();
     if (topMessageId == 0) return;
 
-    const MessageObject* message = p->telegram->message(topMessageId);
+    const MessageObject* message = p->telegram->message(QmlUtils::getUnifiedMessageKey(topMessageId, p->dialog->peer()->channelId()));
     if(!message) {
-        qDebug() << __FUNCTION__ << ": Can't find message with id: " << topMessageId;
+        qWarning() << __FUNCTION__ << ": Can't find message with id: " << topMessageId;
         return;
     }
 
     if(p->telegram->connected()) {
-        p->telegram->messagesReadHistory(peerId(), message->date());
+        if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        {
+            const InputPeer & input = p->telegram->getInputPeer(p->dialog->peer()->channelId());
+            p->telegram->channelsReadHistory(input.channelId(), input.accessHash());
+        } else {
+            p->telegram->messagesReadHistory(peerId(), message->date());
+        }
     }
 }
 
@@ -364,8 +373,9 @@ bool TelegramMessagesModel::hasNewMessage() const
 
 qint64 TelegramMessagesModel::peerId() const
 {
-    bool isChat = p->dialog->peer()->classType()==Peer::typePeerChat;
-    if(isChat)
+    if(p->dialog->peer()->classType()==Peer::typePeerChannel)
+        return p->dialog->peer()->channelId();
+    else if(p->dialog->peer()->classType()==Peer::typePeerChat)
         return p->dialog->peer()->chatId();
     else
         return p->dialog->peer()->userId();
@@ -373,9 +383,13 @@ qint64 TelegramMessagesModel::peerId() const
 
 Peer TelegramMessagesModel::peer() const
 {
-    Peer peer( static_cast<Peer::PeerType>(p->dialog->peer()->classType()) );
-    peer.setChatId(p->dialog->peer()->chatId());
-    peer.setUserId(p->dialog->peer()->userId());
+    Peer peer( static_cast<Peer::PeerClassType>(p->dialog->peer()->classType()) );
+    if(peer.classType() == Peer::typePeerChannel)
+        peer.setChannelId(p->dialog->peer()->channelId());
+    else if(peer.classType() == Peer::typePeerChat)
+        peer.setChatId(p->dialog->peer()->chatId());
+    else
+        peer.setUserId(p->dialog->peer()->userId());
     return peer;
 }
 
@@ -398,7 +412,13 @@ void TelegramMessagesModel::messagesChanged_priv()
     if( !p->dialog )
         return;
 
-    qint32 did = p->dialog->peer()->classType()==Peer::typePeerChat? p->dialog->peer()->chatId() : p->dialog->peer()->userId();
+    qint64 did;
+    if (p->dialog->peer()->classType()==Peer::typePeerChannel)
+        did = p->dialog->peer()->channelId();
+    else if (p->dialog->peer()->classType()==Peer::typePeerChat)
+        did = p->dialog->peer()->chatId();
+    else
+        did = p->dialog->peer()->userId();
     const QList<qint64> & messages = p->telegram->messages(did, p->maxId).mid(0,p->load_limit);
 
     for( int i=0 ; i<p->messages.count() ; i++ )

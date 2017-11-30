@@ -26,6 +26,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QUrl>
+#include <QMutex>
 
 #include <telegram/types/types.h>
 
@@ -38,7 +39,6 @@ class SecretChat;
 class DecryptedMessage;
 class PhotoSize;
 class TelegramSearchModel;
-class NewsLetterDialog;
 class Database;
 class UserData;
 class TelegramMessagesModel;
@@ -66,6 +66,8 @@ class StickerSetObject;
 class Telegram;
 class TelegramThumbnailer;
 class TelegramQmlPrivate;
+class PeerObject;
+
 class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
 {
     Q_OBJECT
@@ -83,7 +85,6 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(QString downloadPath  READ downloadPath  WRITE setDownloadPath  NOTIFY downloadPathChanged )
     Q_PROPERTY(QString tempPath      READ tempPath      WRITE setTempPath      NOTIFY tempPathChanged     )
 
-    Q_PROPERTY(QObject* newsLetterDialog READ newsLetterDialog WRITE setNewsLetterDialog NOTIFY newsLetterDialogChanged     )
     Q_PROPERTY(DatabaseAbstractEncryptor* encrypter READ encrypter WRITE setEncrypter NOTIFY encrypterChanged)
     Q_PROPERTY(bool autoAcceptEncrypted READ autoAcceptEncrypted WRITE setAutoAcceptEncrypted NOTIFY autoAcceptEncryptedChanged)
     Q_PROPERTY(bool autoCleanUpMessages READ autoCleanUpMessages WRITE setAutoCleanUpMessages NOTIFY autoCleanUpMessagesChanged)
@@ -99,7 +100,6 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(UserData*   userData    READ userData    NOTIFY userDataChanged)
     Q_PROPERTY(Database*   database    READ database    NOTIFY databaseChanged)
     Q_PROPERTY(qint64      me          READ me          NOTIFY meChanged)
-    Q_PROPERTY(qint64      cutegramId  READ cutegramId  NOTIFY fakeSignal)
     Q_PROPERTY(UserObject* myUser      READ myUser      NOTIFY myUserChanged)
     Q_PROPERTY(QString     homePath    READ homePath    NOTIFY fakeSignal)
     Q_PROPERTY(QString     currentPath READ currentPath NOTIFY fakeSignal)
@@ -178,9 +178,6 @@ public:
     void setEncrypter(DatabaseAbstractEncryptor *encrypter);
     DatabaseAbstractEncryptor *encrypter() const;
 
-    void setNewsLetterDialog(QObject *dialog);
-    QObject *newsLetterDialog() const;
-
     void setAutoAcceptEncrypted(bool stt);
     bool autoAcceptEncrypted() const;
 
@@ -198,7 +195,6 @@ public:
     Telegram *telegram() const;
     qint64 me() const;
     UserObject *myUser() const;
-    qint64 cutegramId() const;
 
     bool online() const;
     void setOnline( bool stt );
@@ -234,6 +230,7 @@ public:
     Q_INVOKABLE void mute(qint64 peerId);
     Q_INVOKABLE void unmute(qint64 peerId);
     void accountUpdateNotifySettings(qint64 peerId, qint32 muteUntil);
+    Q_INVOKABLE void channelsJoinChannel(QString url);
 
     void setGlobalMute(bool stt);
     bool globalMute() const;
@@ -242,6 +239,7 @@ public:
 
     Q_INVOKABLE DialogObject *dialog(qint64 id) const;
     Q_INVOKABLE MessageObject *message(qint64 id) const;
+    Q_INVOKABLE MessageObject *message(qint32 id, qint32 peerId) const;
     Q_INVOKABLE ChatObject *chat(qint64 id) const;
     Q_INVOKABLE UserObject *user(qint64 id) const;
     Q_INVOKABLE qint64 messageDialogId(qint64 id) const;
@@ -325,18 +323,16 @@ public Q_SLOTS:
     void contactsBlock(qint64 userId);
     void contactsUnblock(qint64 userId);
 
-    qint32 sendMessage( qint64 dialogId, const QString & msg, int replyTo = 0 );
+    qint32 sendMessage(qint64 dialogId, const QString & msg, qint32 replyTo = 0 );
     bool sendMessageAsDocument( qint64 dialogId, const QString & msg );
-    void sendGeo(qint64 dialogId, qreal latitude, qreal longitude, int replyTo = 0);
     void forwardDocument(qint64 dialogId, DocumentObject *doc);
 
     void addContact(const QString &firstName, const QString &lastName, const QString &phoneNumber);
     void addContacts(const QVariantList &vcontacts);
 
-    void forwardMessages( QList<int> msgIds, qint64 peerId );
-    void deleteMessages(QList<int> msgIds );
+    void forwardMessages(QList<int> msgIds, qint32 toPeerId, PeerObject *fromPeer );
+    void deleteMessages(const QList<int> msgIds , PeerObject *peer);
 
-    void deleteCutegramDialog();
     void messagesCreateChat(const QList<int> &users, const QString & topic );
     void messagesAddChatUser(qint64 chatId, qint64 userId, qint32 fwdLimit = 0);
     qint64 messagesDeleteChatUser(qint64 chatId, qint64 userId);
@@ -347,12 +343,16 @@ public Q_SLOTS:
     void messagesSetTyping(qint64 peerId, bool stt);
     qint64 messagesReadHistory(qint64 peerId, qint32 maxDate = 0);
 
+
     void messagesCreateEncryptedChat(qint64 userId);
     void messagesAcceptEncryptedChat(qint32 chatId);
     qint64 messagesDiscardEncryptedChat(qint32 chatId, bool force = false);
 
     void messagesGetFullChat(qint32 chatId);
 
+    void channelsGetFullChannel(qint32 peerId);
+    qint64 channelsReadHistory(qint32 channelId, qint64 accessHash);
+    void channelsDeleteMessages(qint32 channelId, qint64 accessHash, QList<qint64> msgIds);
     void installStickerSet(const QString &shortName);
     void uninstallStickerSet(const QString &shortName);
     void getStickerSet(const QString &shortName);
@@ -375,6 +375,7 @@ public Q_SLOTS:
 
     void updatesGetState();
     void updatesGetDifference();
+    void updatesGetChannelDifference();
 
     bool sleep();
     bool wake();
@@ -411,7 +412,6 @@ Q_SIGNALS:
     void autoUpdateChanged();
     void encryptedChatsChanged();
     void uploadingProfilePhotoChanged();
-    void newsLetterDialogChanged();
     void installedStickersChanged();
     void stickerInstalled(const QString &shortName, bool ok);
     void stickerUninstalled(const QString &shortName, bool ok);
@@ -430,7 +430,7 @@ Q_SIGNALS:
     void authPhoneInvitedChanged();
     void authPhoneCheckedChanged();
     void authPasswordNeeded();
-    void phoneChecked(QString phone, bool phoneRegistered);
+    void phoneChecked(QString phone, const AuthCheckedPhone &result);
     void authPasswordProtectedError();
     void connectedChanged();
 
@@ -452,7 +452,7 @@ Q_SIGNALS:
 
     void contactsImportedContacts(qint32 importedCount, qint32 retryCount);
 
-    void helpGetInviteTextAnswer(qint64 id, QString message);
+    void helpGetInviteTextAnswer(qint64 id, const HelpInviteText &message);
 
     void errorChanged();
     void meChanged();
@@ -480,13 +480,13 @@ private Q_SLOTS:
     void authNeeded_slt();
     void authLoggedIn_slt();
     void authLogOut_slt(qint64 id, bool ok);
-    void authSendCode_slt(qint64 id, bool phoneRegistered, qint32 sendCallTimeout);
+    void authSendCode_slt(qint64 msgId, const AuthSentCode &result);
     void authSendCodeError_slt(qint64 id);
     void authSendCall_slt(qint64 id, bool ok);
     void authSendInvites_slt(qint64 id, bool ok);
-    void authCheckPassword_slt(qint64 msgId, qint32 expires, const User &user);
-    void authCheckPhone_slt(qint64 id, bool phoneRegistered);
-    void authCheckedPhoneError_slt(qint64 msgId);
+    void authCheckPassword_slt(qint64 msgId, const AuthAuthorization &result);
+    void authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result);
+    void authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);
     void authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText);
     void error_slt(qint64 id, qint32 errorCode, QString errorText, QString functionName);
@@ -499,42 +499,37 @@ private Q_SLOTS:
     void accountUpdateUsername_slt(qint64 id, const User &user);
 
 
-    void photosUploadProfilePhoto_slt(qint64 id, const Photo & photo, const QList<User> & users);
+    void photosUploadProfilePhoto_slt(qint64 id, const PhotosPhoto &result);
     void photosUpdateProfilePhoto_slt(qint64 id, const UserProfilePhoto & userProfilePhoto);
 
     void contactsBlock_slt(qint64 id, bool ok);
     void contactsUnblock_slt(qint64 id, bool ok);
-    void contactsImportContacts_slt(qint64 id, const QList<ImportedContact> &importedContacts, const QList<qint64> &retryContacts, const QList<User> &users);
-    void contactsFound_slt(qint64 id, const QList<ContactFound> &founds, const QList<User> &users);
-    void contactsGetContacts_slt(qint64 id, bool modified, const QList<Contact> & contacts, const QList<User> & users);
-    void usersGetFullUser_slt(qint64 id, const User &user, const ContactsLink &link, const Photo &profilePhoto, const PeerNotifySettings &notifySettings, bool blocked, const QString &realFirstName, const QString &realLastName);
+    void contactsImportContacts_slt(qint64 id, const ContactsImportedContacts &result);
+    void contactsGetContacts_slt(qint64 id, const ContactsContacts &result);
+    void usersGetFullUser_slt(qint64 id, const UserFull &result);
     void usersGetUsers_slt(qint64 id, const QList<User> &users);
 
-    void messagesSendMessage_slt(qint64 id, qint32 msgId, qint32 date, const MessageMedia &media, qint32 pts, qint32 pts_count, qint32 seq, const QList<ContactsLink> & links);
+    void messagesSendMessage_slt(qint64 id, const UpdatesType &result);
     void messagesForwardMessage_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardMessages_slt(qint64 id, const UpdatesType &updates);
     void messagesDeleteMessages_slt(qint64 id, const MessagesAffectedMessages &deletedMessages);
-    void messagesGetMessages_slt(qint64 id, qint32 sliceCount, const QList<Message> &messages, const QList<Chat> &chats, const QList<User> &users);
+    void messagesGetMessages_slt(qint64 id, const MessagesMessages &result);
 
     void messagesSendMedia_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendPhoto_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendVideo_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendAudio_slt(qint64 id, const UpdatesType &updates);
-    void messagesSendDocument_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardMedia_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardPhoto_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardVideo_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardAudio_slt(qint64 id, const UpdatesType &updates);
     void messagesForwardDocument_slt(qint64 id, const UpdatesType &updates);
-    void messagesGetDialogs_slt(qint64 id, qint32 sliceCount, const QList<Dialog> & dialogs, const QList<Message> & messages, const QList<Chat> & chats, const QList<User> & users);
-    void messagesGetHistory_slt(qint64 id, qint32 sliceCount, const QList<Message> & messages, const QList<Chat> & chats, const QList<User> & users);
-    void messagesReadHistory_slt(qint64 id, qint32 pts, qint32 pts_count, qint32 offset);
+    void messagesGetDialogs_slt(qint64 id, const MessagesDialogs &result);
+    void messagesGetHistory_slt(qint64 id, const MessagesMessages &result);
+    void messagesReadHistory_slt(qint64 id, const MessagesAffectedMessages &result);
     void messagesReadEncryptedHistory_slt(qint64 id, bool ok);
-    void messagesDeleteHistory_slt(qint64 id, qint32 pts, qint32 seq, qint32 offset);
+    void messagesDeleteHistory_slt(qint64 id, const MessagesAffectedHistory &result);
 
-    void messagesSearch_slt(qint64 id, qint32 sliceCount, const QList<Message> & messages, const QList<Chat> & chats, const QList<User> & users);
+    void messagesSearch_slt(qint64 id, const MessagesMessages &result);
 
-    void messagesGetFullChat_slt(qint64 id, const ChatFull & chatFull, const QList<Chat> & chats, const QList<User> & users);
+    void messagesGetFullChat_slt(qint64 id, const MessagesChatFull &result);
     void messagesCreateChat_slt(qint64 id, const UpdatesType &updates);
     void messagesEditChatTitle_slt(qint64 id, const UpdatesType &updates);
     void messagesEditChatPhoto_slt(qint64 id, const UpdatesType &updates);
@@ -554,29 +549,37 @@ private Q_SLOTS:
     void messagesInstallStickerSet_slt(qint64 msgId, bool ok);
     void messagesUninstallStickerSet_slt(qint64 msgId, bool ok);
 
+    void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
+
+    void channelsGetDialogs_slt(qint64 id, const MessagesDialogs &result);
+
     void updatesTooLong_slt();
-    void updateShortMessage_slt(qint32 id, qint32 userId, QString message, qint32 pts, qint32 pts_count, qint32 date, qint32 fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
-    void updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 chatId, QString message, qint32 pts, qint32 pts_count, qint32 date, qint32 fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
+    void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
+    void updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 chatId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
     void updateShort_slt(const Update & update, qint32 date);
     void updatesCombined_slt(const QList<Update> & updates, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seqStart, qint32 seq);
     void updates_slt(const QList<Update> & udts, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seq);
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
-    void updatesGetState_slt(qint64 id, qint32 pts, qint32 qts, qint32 date, qint32 seq, qint32 unreadCount);
+    void updatesGetDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
+    void updatesGetChannelDifference_slt(qint64 msgId, const UpdatesChannelDifference &result);
+    void updatesGetChannelDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
+    void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
+    void updatesGetState_err(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void uploadGetFile_slt(qint64 id, const StorageFileType & type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total);
     void uploadSendFile_slt(qint64 fileId, qint32 partId, qint32 uploaded, qint32 totalSize);
     void uploadCancelFile_slt(qint64 fileId, bool cancelled);
 
-    void fatalError_slt();
+    void onConnectedChanged();
 
-    void incomingAsemanMessage(const Message &msg, const Dialog &dialog);
+    void fatalError_slt();
 
 private:
     void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false);
-    void insertMessage(const Message & message , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
-    void insertUser( const User & user, bool fromDb = false );
-    void insertChat( const Chat & chat, bool fromDb = false );
+    void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
+    void insertUser(const User & newUser, bool fromDb = false );
+    void insertChat( const Chat & chat, bool fromDb = false, const ChatFull &chatFull = ChatFull() );
     void insertStickerSet(const StickerSet &set, bool fromDb = false);
     void insertStickerPack(const StickerPack &pack, bool fromDb = false);
     void insertDocument(const Document &doc, bool fromDb = false);
@@ -597,6 +600,9 @@ private:
     static QString localFilesPrePath();
     static bool createAudioThumbnail(const QString &audio, const QString &output);
     QString publicKeyPath() const;
+
+    QMutex getDialogsLock;
+    QMutex getMessagesLock;
 
 protected:
     void timerEvent(QTimerEvent *e);
@@ -620,8 +626,8 @@ private Q_SLOTS:
     void updateEncryptedTopMessage(const Message &message);
     void getMyUser();
 
-    InputPeer::InputPeerType getInputPeerType(qint64 pid);
-    Peer::PeerType getPeerType(qint64 pid);
+    InputPeer::InputPeerClassType getInputPeerType(qint64 pid);
+    Peer::PeerClassType getPeerType(qint64 pid);
 
     QStringList stringToIndex(const QString & str);
 
@@ -629,12 +635,15 @@ private Q_SLOTS:
     void cleanUpMessages_prv();
 
     bool requestReadMessage(qint32 msgId);
-    void requestReadMessage_prv();
+    bool requestReadChannelMessage(qint32 msgId, qint32 channelId, qint64 accessHash);
+//    void requestReadMessage_prv();
 
     static void removeFiles(const QString &dir);
 
+
 private:
     TelegramQmlPrivate *p;
+    void checkUpdateSyncState(qint32 seq, qint32 date);
 };
 
 Q_DECLARE_METATYPE(TelegramQml*)

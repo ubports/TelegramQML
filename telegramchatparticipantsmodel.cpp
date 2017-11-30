@@ -78,9 +78,11 @@ void TelegramChatParticipantsModel::setDialog(DialogObject *dlg)
     p->participants.clear();
     endResetModel();
 
-    if( !p->dialog )
+    if(!p->dialog)
         return;
-    if( !p->dialog->peer()->chatId() )
+    if(!p->dialog->peer()->chatId())
+        return;
+    if(!p->dialog->peer()->channelId())
         return;
 
     refresh();
@@ -135,14 +137,19 @@ bool TelegramChatParticipantsModel::refreshing() const
 
 void TelegramChatParticipantsModel::refresh()
 {
-    if( !p->telegram )
+    if( !p->telegram || !p->dialog )
         return;
-    if( !p->dialog )
+    qint64 dId = p->dialog->peer()->chatId();
+    if(!dId)
+        dId = p->dialog->peer()->channelId();
+    if(!dId)
         return;
-    if( !p->dialog->peer()->chatId() )
-        return;
-
-    p->telegram->messagesGetFullChat(p->dialog->peer()->chatId());
+    if(p->dialog->peer()->classType() == Peer::typePeerChat)
+        p->telegram->messagesGetFullChat(dId);
+    else
+    {
+        p->telegram->channelsGetFullChannel(dId);
+    }
 
     p->refreshing = true;
     Q_EMIT refreshingChanged();
@@ -154,7 +161,10 @@ void TelegramChatParticipantsModel::chatFullsChanged()
     p->participants.clear();
     endResetModel();
 
-    ChatFullObject *chatFull = p->telegram->chatFull(p->dialog->peer()->chatId());
+    qint64 dId = p->dialog->peer()->chatId();
+    if(!dId)
+        dId = p->dialog->peer()->channelId();
+    ChatFullObject *chatFull = p->telegram->chatFull(dId);
     if( !chatFull )
         return;
 

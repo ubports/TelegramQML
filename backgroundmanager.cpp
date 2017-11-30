@@ -65,10 +65,13 @@ qint64 BackgroundManager::dialogId()
     if(!p->dialog || p->directory.isEmpty())
         return 0;
 
-    qint64 dId = p->dialog->peer()->chatId()? p->dialog->peer()->chatId() :
-                                              p->dialog->peer()->userId();
+    qint64 dId = p->dialog->peer()->chatId();
     if(!dId)
-        return 0;
+        dId = p->dialog->peer()->channelId();
+    if(!dId)
+        dId = p->dialog->peer()->userId();
+    if(!dId)
+        dId = 0;
 
     return dId;
 }

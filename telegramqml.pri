@@ -24,7 +24,7 @@ win32 {
         LIBS += -L$${LIBQTELEGRAM_LIB_DIR} -lqtelegram-ae
     }
 
-    INCLUDEPATH += $${LIBQTELEGRAM_INCLUDE_PATH} $${OPENSSL_INCLUDE_PATH}
+    INCLUDEPATH += $${LIBQTELEGRAM_INCLUDE_PATH} $${OPENSSL_INCLUDE_PATH} ../libqtelegram-ae
 }
 
 # Input
@@ -53,14 +53,16 @@ SOURCES += \
     $$PWD/telegrammessagesmodel.cpp \
     $$PWD/telegramthumbnailer.cpp \
     $$PWD/telegramthumbnailercore.cpp \
-    $$PWD/newsletterdialog.cpp \
     $$PWD/userdata.cpp \
     $$PWD/telegramqmlinitializer.cpp \
     $$PWD/tqobject.cpp \
     $$PWD/stickersmodel.cpp \
     $$PWD/documentattributelist.cpp \
     $$PWD/tgabstractlistmodel.cpp \
-    $$PWD/databaseabstractencryptor.cpp
+    $$PWD/databaseabstractencryptor.cpp \
+    $$PWD/utils.cpp \
+    $$PWD/syncmanager.cpp \
+    $$PWD/objects/types.cpp
 
 HEADERS += \
     $$PWD/telegramqml_plugin.h \
@@ -91,13 +93,14 @@ HEADERS += \
     $$PWD/objects/types.h \
     $$PWD/telegramqml_macros.h \
     $$PWD/telegramqml_global.h \
-    $$PWD/newsletterdialog.h \
     $$PWD/telegramqmlinitializer.h \
     $$PWD/tqobject.h \
     $$PWD/stickersmodel.h \
     $$PWD/documentattributelist.h \
     $$PWD/tgabstractlistmodel.h \
-    $$PWD/databaseabstractencryptor.h
+    $$PWD/databaseabstractencryptor.h \
+    $$PWD/utils.h \
+    $$PWD/syncmanager.h
 
 RESOURCES += \
     $$PWD/tqmlresource.qrc
