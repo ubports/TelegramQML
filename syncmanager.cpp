@@ -5,7 +5,8 @@ SyncManager::SyncManager(TelegramQml *tQ)
     this->tQ = tQ;
     this->_globalState = UpdatesState();
     this->_channelStates = QHash<qint32, UpdatesState>();
-
+    this->syncTask = new SyncManagerSyncTask(&serverSyncMutex, &serverSyncRequested, tQ);
+    syncTask->start();
 }
 
 UpdatesState SyncManager::getState(qint32 channelId)
@@ -20,6 +21,12 @@ UpdatesState SyncManager::getState(qint32 channelId)
     }
     updateMutex.unlock();
     return result;
+}
+
+void SyncManager::requestSync()
+{
+    serverSyncRequested.wakeAll();
+
 }
 
 void SyncManager::setState(const UpdatesState &state, qint32 channelId)
@@ -55,4 +62,24 @@ bool SyncManager::isSynced(const UpdatesState &state, qint32 channelId)
     }
     updateMutex.unlock();
     return result;
+}
+
+SyncManagerSyncTask::SyncManagerSyncTask(QMutex *serverSyncMutex, QWaitCondition *serverSyncRequested, TelegramQml *tQ, QObject *parent): QThread(parent)
+{
+    this->tQ = tQ;
+    this->serverSyncMutex = serverSyncMutex;
+    this->serverSyncRequested = serverSyncRequested;
+}
+
+void SyncManagerSyncTask::run()
+{
+    serverSyncMutex->lock();
+    while(true)
+    {
+        serverSyncRequested->wait(this->serverSyncMutex);
+        QThread::msleep(800);
+        qWarning() << "Deferred execution of server synchronization requested";
+        QMetaObject::invokeMethod(tQ, "updatesGetDifference", Qt::QueuedConnection);
+
+    }
 }

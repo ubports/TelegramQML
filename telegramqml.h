@@ -303,6 +303,8 @@ public:
 
     QList<qint64> userIndex(const QString &keyword);
 
+    Q_INVOKABLE void updatesGetDifference();
+
 public Q_SLOTS:
     void authLogout();
     void authResetAuthorizations();
@@ -374,7 +376,6 @@ public Q_SLOTS:
     void cleanUpMessages();
 
     void updatesGetState();
-    void updatesGetDifference();
     void updatesGetChannelDifference();
 
     bool sleep();

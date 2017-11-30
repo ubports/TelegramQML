@@ -310,7 +310,10 @@ bool TelegramFileHandler::download()
     if(!p->telegram || !p->location)
         return false;
     if(p->progressType != TypeProgressEmpty)
+    {
+        qWarning() << "A download is in progress, cannot start another one";
         return false;
+    }
 
     InputFileLocation::InputFileLocationClassType type;
     switch(p->targetType)
@@ -328,7 +331,7 @@ bool TelegramFileHandler::download()
         type = InputFileLocation::typeInputFileLocation;
         break;
     }
-
+    qWarning() << "Downloading now file " << p->location->id();
     p->telegram->getFile(p->location, type, fileSize());
     return true;
 }
