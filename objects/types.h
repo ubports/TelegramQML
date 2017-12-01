@@ -5237,13 +5237,17 @@ public:
         _classType = another.classType();
         _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         _views = another.views();
+        _hash = another.getHash();
     }
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
         _upload(0),
         _toId(0),
         _action(0),
-        _media(0){}
+        _media(0),
+        _hash(QByteArray())
+    {}
+
     ~MessageObject(){}
 
     qint32 id() const {
@@ -5494,6 +5498,7 @@ public:
         Q_EMIT unifiedIdChanged();
         _views = another.views();
         Q_EMIT viewsChanged();
+        _hash = another.getHash();
     }
 
 Q_SIGNALS:
@@ -5536,6 +5541,7 @@ private:
     qint32 _classType;
     qint64 _unifiedId;
     quint32 _views;
+    QByteArray _hash;
 
 };
 

@@ -77,7 +77,7 @@ void SyncManagerSyncTask::run()
     while(true)
     {
         serverSyncRequested->wait(this->serverSyncMutex);
-        QThread::msleep(800);
+        QThread::msleep(1500);
         qWarning() << "Deferred execution of server synchronization requested";
         QMetaObject::invokeMethod(tQ, "updatesGetDifference", Qt::QueuedConnection);
 

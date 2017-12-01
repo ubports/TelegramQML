@@ -3725,12 +3725,7 @@ void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &resu
     Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c);
     Q_FOREACH( const Message & m, result.messages() )
-    {
-        //qWarning() << "Inserting message with date " << QDateTime::fromTime_t(m.date()).toString(Qt::TextDate);
-        if (m.media().document().accessHash())
-            qWarning() << "Received media with id=" << m.media().document().id() << " and access has " << m.media().document().accessHash();
         insertMessage(m);
-    }
 
     Q_EMIT messagesChanged(false);
 }
@@ -4667,7 +4662,9 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
         bool changed = (newMsg == currentMsg);
         delete newMsg;
         if(!changed)
+        {
             return;
+        }
         *currentMsg = m;
         currentMsg->setEncrypted(encrypted);
     }
@@ -5085,7 +5082,6 @@ void TelegramQml::insertUpdate(const Update &update)
     case Update::typeUpdateReadHistoryOutbox:
     {
         const qint64 maxId = update.maxId();
-        qWarning() << "Max read message id is: " << maxId;
         const qint64 dId = update.channelId()? update.channelId() : update.peer().chatId()? update.peer().chatId() : update.peer().userId();
         const QList<qint64> &msgs = p->messages_list.value(dId);
         Q_FOREACH(qint64 msg, msgs)
@@ -5094,7 +5090,6 @@ void TelegramQml::insertUpdate(const Update &update)
                 MessageObject *obj = p->messages.value(msg);
                 if(obj)
                 {
-                    qWarning() << "Marking message " << QmlUtils::getSeparateMessageId(msg) << " as read";
                     obj->setUnread(false);
                 }
             }

@@ -360,6 +360,7 @@ void TelegramFileHandler::refresh()
     QObject *targetObject = 0;
     p->location = analizeObject(p->object, &targetType, &targetObject);
     p->targetType = targetType;
+    Q_EMIT targetTypeChanged();
     p->target = targetObject;
 
     connectLocation(p->location);

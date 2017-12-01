@@ -716,10 +716,12 @@ void DatabaseCore::init_buffer()
 void DatabaseCore::update_db()
 {
     int db_version = value("version").toInt();
+    qWarning() << "Databasecore: initial version: " << db_version;
     if(db_version == 0)
     {
         update_moveFiles();
 
+        qWarning() << "Databasecore: updating db to version 1...";
         QSqlQuery query(db);
         query.prepare("CREATE TABLE General ("
                       "gkey TEXT NOT NULL,"
@@ -730,6 +732,7 @@ void DatabaseCore::update_db()
     }
     if(db_version == 1)
     {
+        qWarning() << "Databasecore: updating db to version 2...";
         QSqlQuery query(db);
         query.prepare("CREATE TABLE MediaKeys ("
                       "id BIGINT PRIMARY KEY NOT NULL,"
@@ -741,6 +744,7 @@ void DatabaseCore::update_db()
     }
     if(db_version == 2)
     {
+        qWarning() << "Databasecore: updating db to version 3...";
         QSqlQuery query(db);
         query.prepare("ALTER TABLE messages ADD COLUMN replyToMsgId BIGINT");
         query.exec();
@@ -749,6 +753,7 @@ void DatabaseCore::update_db()
     }
     if (db_version == 3)
     {
+        qWarning() << "Databasecore: updating db to version 4...";
         QSqlQuery query(db);
         query.prepare("CREATE TABLE IF NOT EXISTS Blocked (uid BIGINT PRIMARY KEY NOT NULL)");
         query.exec();
@@ -757,6 +762,7 @@ void DatabaseCore::update_db()
     }
     if (db_version == 4)
     {
+        qWarning() << "Databasecore: updating db to version 5...";
         QSqlQuery query(db);
         query.prepare("CREATE TABLE IF NOT EXISTS Contacts (userId BIGINT PRIMARY KEY NOT NULL, mutual BOOLEAN, type BIGINT)");
         query.exec();
@@ -767,6 +773,7 @@ void DatabaseCore::update_db()
     //Db scripts for API-41
     if (db_version == 5)
     {
+        qWarning() << "Databasecore: updating db to version 6...";
         QSqlQuery query(db);
         query.prepare("ALTER TABLE messages ADD COLUMN fwdFromPeerType BIGINT");
         query.exec();
@@ -776,6 +783,7 @@ void DatabaseCore::update_db()
 
     if (db_version == 6)
     {
+        qWarning() << "Databasecore: updating db to version 7...";
         QSqlQuery query(db);
         query.prepare("PRAGMA foreign_keys=off;"
                       "BEGIN TRANSACTION;"
@@ -840,6 +848,7 @@ void DatabaseCore::update_db()
         db_version = 9;
     }
 
+    qWarning() << "Databasecore: updating db was successful!";
     setValue("version", QString::number(db_version) );
 }
 
