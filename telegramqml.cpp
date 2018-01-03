@@ -2441,15 +2441,20 @@ qint64 TelegramQml::sendFile(qint64 dId, const QString &fpath, bool forceDocumen
 
 void TelegramQml::getFile(FileLocationObject *l, qint64 type, qint32 fileSize)
 {
-    if(!l)
-        return;
-    if( !p->telegram )
-        return;
-    if(l->accessHash()==0 && l->volumeId()==0 && l->localId()==0)
-        return;
-    if(l->download()->fileId() != 0)
-        return;
+    if((!l) || ( !p->telegram ) || (l->accessHash()==0 && l->volumeId()==0 && l->localId()==0) || (l->download()->fileId() != 0))
+    {
+        qWarning() << "getFile(): Cannot request a file from the server, bogus data provided:";
+        if (!l)
+            qWarning() << "Invalid location object.";
+        if (!p->telegram)
+            qWarning() << "Invalid telegram object.";
+        if (l && l->accessHash()==0 && l->volumeId()==0 && l->localId()==0)
+            qWarning() << "Access hash, volume Id and local Id all equal 0.";
+        if (l->download()->fileId() != 0)
+            qWarning() << "File already requested for download. MTproto id: " << l->download()->fileId();
 
+        return;
+    }
     const QString & download_file = fileLocation(l);
     if( QFile::exists(download_file) )
     {
@@ -2514,12 +2519,18 @@ void TelegramQml::getFile(FileLocationObject *l, qint64 type, qint32 fileSize)
         UserProfilePhotoObject *upp = static_cast<UserProfilePhotoObject*>(parentObj);
         Q_UNUSED(upp)
     }
+    else if(parentObj && qobject_cast<ChatPhotoObject*>(parentObj))
+    {
+        ChatPhotoObject *upp = static_cast<ChatPhotoObject*>(parentObj);
+        Q_UNUSED(upp)
+    }
     else
         qDebug() << __FUNCTION__ << ": Can't detect size of: " << parentObj;
 
+    qWarning() << "uploadGetFile(): trying to get file " << l->localId();
     qint64 fileId = p->telegram->uploadGetFile(input, fileSize, l->dcId(), ekey, eiv);
     p->downloads[fileId] = l;
-
+    qWarning() << "uploadGetFile(): MTproto id: " << fileId;
     l->download()->setFileId(fileId);
 }
 
@@ -4444,6 +4455,7 @@ void TelegramQml::updatesGetState_err(qint64 msgId, qint32 errorCode, const QStr
 
 void TelegramQml::uploadGetFile_slt(qint64 id, const StorageFileType &type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total)
 {
+    qWarning() << "uploadGetFileAnswer(): received chunk for id: " << id;
     FileLocationObject *obj = p->downloads.value(id);
     if( !obj )
         return;
@@ -4552,6 +4564,7 @@ void TelegramQml::onConnectedChanged()
     if (p->telegram->isConnected() && p->authLoggedIn )
     {
         qWarning() << "onConnectedChanged: connected, qerying state";
+        QThread::msleep(1500);
         updatesGetState();
         p->telegram->channelsGetDialogs(0, 1000);
         updatesGetChannelDifference();

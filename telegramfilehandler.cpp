@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QImageReader>
 #include <QDebug>
+#include <QMutex>
 
 class TelegramFileHandlerPrivate
 {
@@ -26,6 +27,7 @@ public:
     QUrl defaultThumbnail;
     QUrl filePath;
     QUrl thumbPath;
+
 };
 
 TelegramFileHandler::TelegramFileHandler(QObject *parent) :
@@ -291,7 +293,9 @@ bool TelegramFileHandler::cancelProgress()
     {
     case TypeProgressDownload:
         if(p->location)
+        {
             p->telegram->cancelDownload(p->location->download());
+        }
         else
             return false;
         break;
@@ -307,14 +311,15 @@ bool TelegramFileHandler::cancelProgress()
 
 bool TelegramFileHandler::download()
 {
-    if(!p->telegram || !p->location)
-        return false;
-    if(p->progressType != TypeProgressEmpty)
+    if(!p->telegram || !p->location || p->location->localId() == 0 && p->location->dcId() == 0)
     {
-        qWarning() << "A download is in progress, cannot start another one";
+        qWarning() << "Requested download of empty file. Location: " << p->location->fileName() << " " << p->location->localId() << " " << p->location->dcId()  << " " << p->location->accessHash();
         return false;
     }
-
+    if(p->progressType != TypeProgressEmpty)
+    {
+        qWarning() << "A download is in progress, waiting now...";
+    }
     InputFileLocation::InputFileLocationClassType type;
     switch(p->targetType)
     {
@@ -331,7 +336,7 @@ bool TelegramFileHandler::download()
         type = InputFileLocation::typeInputFileLocation;
         break;
     }
-    qWarning() << "Downloading now file " << p->location->id();
+    qWarning() << "Downloading now file " << p->location->localId();
     p->telegram->getFile(p->location, type, fileSize());
     return true;
 }
@@ -358,7 +363,7 @@ void TelegramFileHandler::refresh()
 
     int targetType = TypeTargetUnknown;
     QObject *targetObject = 0;
-    p->location = analizeObject(p->object, &targetType, &targetObject);
+    p->location = analyzeObject(p->object, &targetType, &targetObject);
     p->targetType = targetType;
     Q_EMIT targetTypeChanged();
     p->target = targetObject;
@@ -552,7 +557,7 @@ void TelegramFileHandler::emitPathChanges()
 }
 
 /*! Recursive Function !*/
-FileLocationObject *TelegramFileHandler::analizeObject(QObject *target, int *targetType, QObject **targetPointer)
+FileLocationObject *TelegramFileHandler::analyzeObject(QObject *target, int *targetType, QObject **targetPointer)
 {
     if(!p->telegram || !target)
         return 0;
@@ -561,196 +566,201 @@ FileLocationObject *TelegramFileHandler::analizeObject(QObject *target, int *tar
     const ObjectType objectType = detectObjectType(target);
     switch(objectType)
     {
-    case TypeObjectMessage:
-    {
-        MessageObject *msg = static_cast<MessageObject*>(target);
-        if(msg->media()->classType() != MessageMedia::typeMessageMediaEmpty)
-            object = msg->media();
-        else
-        if(msg->action()->classType() != MessageAction::typeMessageActionEmpty)
-            object = msg->action();
-    }
-        break;
-
-    case TypeObjectDialog:
-    {
-        DialogObject *dlg = static_cast<DialogObject*>(target);
-        object = dlg->peer();
-    }
-        break;
-
-    case TypeObjectPeer:
-    {
-        PeerObject *peer = static_cast<PeerObject*>(target);
-        if(peer->classType() == Peer::typePeerUser)
-            object = p->telegram->user(peer->userId());
-        else
-            object = p->telegram->chat(peer->chatId());
-    }
-        break;
-
-    case TypeObjectUser:
-        object = static_cast<UserObject*>(target)->photo();
-        break;
-
-    case TypeObjectChat:
-        object = static_cast<ChatObject*>(target)->photo();
-        break;
-
-    case TypeObjectFileLocation:
-        return static_cast<FileLocationObject*>(target);
-        break;
-
-    case TypeObjectMessageAction:
-    {
-        MessageActionObject *act = static_cast<MessageActionObject*>(target);
-        if(act->classType() == MessageAction::typeMessageActionChatEditPhoto)
+        case TypeObjectMessage:
         {
-            object = act->photo();
-            if(targetType) *targetType = TypeTargetActionChatPhoto;
+            MessageObject *msg = static_cast<MessageObject*>(target);
+            if(msg->media()->classType() != MessageMedia::typeMessageMediaEmpty)
+                object = msg->media();
+            else
+            if(msg->action()->classType() != MessageAction::typeMessageActionEmpty)
+                object = msg->action();
+        }
+            break;
+
+        case TypeObjectDialog:
+        {
+            DialogObject *dlg = static_cast<DialogObject*>(target);
+            object = dlg->peer();
+        }
+            break;
+
+        case TypeObjectPeer:
+        {
+            PeerObject *peer = static_cast<PeerObject*>(target);
+            if(peer->classType() == Peer::typePeerUser)
+                object = p->telegram->user(peer->userId());
+            else
+                object = p->telegram->chat(peer->chatId());
+        }
+            break;
+
+        case TypeObjectUser:
+            object = static_cast<UserObject*>(target)->photo();
+            break;
+
+        case TypeObjectChat:
+            object = static_cast<ChatObject*>(target)->photo();
+            break;
+
+        case TypeObjectFileLocation:
+        {
+            FileLocationObject *result = static_cast<FileLocationObject*>(target);
+            return result;
+        }
+
+        case TypeObjectMessageAction:
+        {
+            MessageActionObject *act = static_cast<MessageActionObject*>(target);
+            if(act->classType() == MessageAction::typeMessageActionChatEditPhoto)
+            {
+                object = act->photo();
+                if(targetType) *targetType = TypeTargetActionChatPhoto;
+                if(targetPointer) *targetPointer = object;
+            }
+        }
+            break;
+
+        case TypeObjectMessageMedia:
+        {
+            MessageMediaObject *media = static_cast<MessageMediaObject*>(target);
+            if(media->classType() == MessageMedia::typeMessageMediaAudio)
+                object = media->audio();
+            else
+            if(media->classType() == MessageMedia::typeMessageMediaDocument)
+                object = media->document();
+            else
+            if(media->classType() == MessageMedia::typeMessageMediaVideo)
+                object = media->video();
+            else
+            if(media->classType() == MessageMedia::typeMessageMediaPhoto)
+                object = media->photo();
+            else
+            if(media->classType() == MessageMedia::typeMessageMediaGeo)
+                object = media->geo();
+            else
+            if(media->classType() == MessageMedia::typeMessageMediaWebPage)
+                object = media->webpage();
+        }
+            break;
+
+        case TypeObjectAudio:
+            object = p->telegram->locationOfAudio( static_cast<AudioObject*>(target) );
+            if(targetType) *targetType = TypeTargetMediaAudio;
+            if(targetPointer) *targetPointer = static_cast<AudioObject*>(target);
+            break;
+
+        case TypeObjectDocument:
+            object = p->telegram->locationOfDocument( static_cast<DocumentObject*>(target) );
+            p->thumb_location = analyzeObject( static_cast<DocumentObject*>(target)->thumb() );
+            if(targetType) *targetType = TypeTargetMediaDocument;
+            if(targetPointer) *targetPointer = static_cast<DocumentObject*>(target);
+            break;
+
+        case TypeObjectVideo:
+            object = p->telegram->locationOfVideo( static_cast<VideoObject*>(target) );
+            p->thumb_location = analyzeObject( static_cast<VideoObject*>(target)->thumb() );
+            if(targetType) *targetType = TypeTargetMediaVideo;
+            if(targetPointer) *targetPointer = static_cast<VideoObject*>(target);
+            break;
+
+        case TypeObjectWebPage:
+        {
+            PhotoObject* photo = static_cast<WebPageObject*>(target)->photo();
+            object = p->telegram->locationOfPhoto(photo);
+            p->thumb_location = p->telegram->locationOfThumbPhoto(photo);
+            if(targetType) *targetType = TypeTargetMediaPhoto;
+            if(targetPointer) *targetPointer = photo;
+        }
+            break;
+
+        case TypeObjectGeoPoint:
+            object = 0;
+            if(targetType) *targetType = TypeTargetMediaGeoPoint;
             if(targetPointer) *targetPointer = object;
-        }
-    }
-        break;
+            break;
 
-    case TypeObjectMessageMedia:
-    {
-        MessageMediaObject *media = static_cast<MessageMediaObject*>(target);
-        if(media->classType() == MessageMedia::typeMessageMediaAudio)
-            object = media->audio();
-        else
-        if(media->classType() == MessageMedia::typeMessageMediaDocument)
-            object = media->document();
-        else
-        if(media->classType() == MessageMedia::typeMessageMediaVideo)
-            object = media->video();
-        else
-        if(media->classType() == MessageMedia::typeMessageMediaPhoto)
-            object = media->photo();
-        else
-        if(media->classType() == MessageMedia::typeMessageMediaGeo)
-            object = media->geo();
-        else
-        if(media->classType() == MessageMedia::typeMessageMediaWebPage)
-            object = media->webpage();
-    }
-        break;
-
-    case TypeObjectAudio:
-        object = p->telegram->locationOfAudio( static_cast<AudioObject*>(target) );
-        if(targetType) *targetType = TypeTargetMediaAudio;
-        if(targetPointer) *targetPointer = static_cast<AudioObject*>(target);
-        break;
-
-    case TypeObjectDocument:
-        object = p->telegram->locationOfDocument( static_cast<DocumentObject*>(target) );
-        p->thumb_location = analizeObject( static_cast<DocumentObject*>(target)->thumb() );
-        if(targetType) *targetType = TypeTargetMediaDocument;
-        if(targetPointer) *targetPointer = static_cast<DocumentObject*>(target);
-        break;
-
-    case TypeObjectVideo:
-        object = p->telegram->locationOfVideo( static_cast<VideoObject*>(target) );
-        p->thumb_location = analizeObject( static_cast<VideoObject*>(target)->thumb() );
-        if(targetType) *targetType = TypeTargetMediaVideo;
-        if(targetPointer) *targetPointer = static_cast<VideoObject*>(target);
-        break;
-
-    case TypeObjectWebPage:
-    {
-        PhotoObject* photo = static_cast<WebPageObject*>(target)->photo();
-        object = p->telegram->locationOfPhoto(photo);
-        p->thumb_location = p->telegram->locationOfThumbPhoto(photo);
-        if(targetType) *targetType = TypeTargetMediaPhoto;
-        if(targetPointer) *targetPointer = photo;
-    }
-        break;
-
-    case TypeObjectGeoPoint:
-        object = 0;
-        if(targetType) *targetType = TypeTargetMediaGeoPoint;
-        if(targetPointer) *targetPointer = object;
-        break;
-
-    case TypeObjectContact:
-        object = 0;
-        if(targetType) *targetType = TypeTargetMediaContact;
-        if(targetPointer) *targetPointer = object;
-        break;
+        case TypeObjectContact:
+            object = 0;
+            if(targetType) *targetType = TypeTargetMediaContact;
+            if(targetPointer) *targetPointer = object;
+            break;
 
 
-    case TypeObjectPhoto:
-    {
-        object = p->telegram->locationOfPhoto( static_cast<PhotoObject*>(target) );
-        p->thumb_location = p->telegram->locationOfThumbPhoto(static_cast<PhotoObject*>(target) );
-        if(targetType) *targetType = TypeTargetMediaPhoto;
-        if(targetPointer) *targetPointer = static_cast<PhotoObject*>(target);
-    }
-        break;
-
-    case TypeObjectPhotoSizeList:
-    {
-        PhotoSizeList *list = static_cast<PhotoSizeList*>(target);
-        int minIdx = 0,
-            minSize = 0;
-        int maxIdx = 0,
-            maxSize = 0;
-        for(int i=0; i<list->count(); i++)
+        case TypeObjectPhoto:
         {
-            PhotoSizeObject *size = list->at(i);
-            if(minSize == 0)
-                minSize = size->w();
-            else
-            if(size->w() <= minSize)
+            object = p->telegram->locationOfPhoto( static_cast<PhotoObject*>(target) );
+            p->thumb_location = p->telegram->locationOfThumbPhoto(static_cast<PhotoObject*>(target) );
+            if(targetType) *targetType = TypeTargetMediaPhoto;
+            if(targetPointer) *targetPointer = static_cast<PhotoObject*>(target);
+        }
+            break;
+
+        case TypeObjectPhotoSizeList:
+        {
+            PhotoSizeList *list = static_cast<PhotoSizeList*>(target);
+            int minIdx = 0,
+                minSize = 0;
+            int maxIdx = 0,
+                maxSize = 0;
+            for(int i=0; i<list->count(); i++)
             {
-                minIdx = i;
-                minSize = size->w();
+                PhotoSizeObject *size = list->at(i);
+                if(minSize == 0)
+                    minSize = size->w();
+                else
+                if(size->w() <= minSize)
+                {
+                    minIdx = i;
+                    minSize = size->w();
+                }
+
+                if(maxSize == 0)
+                    maxSize = size->w();
+                else
+                if(size->w() >= maxSize)
+                {
+                    maxIdx = i;
+                    maxSize = size->w();
+                }
             }
 
-            if(maxSize == 0)
-                maxSize = size->w();
-            else
-            if(size->w() >= maxSize)
+            if(list->count() != 0)
             {
-                maxIdx = i;
-                maxSize = size->w();
+                object = list->at(maxIdx);
+                p->thumb_location = analyzeObject( list->at(minIdx) );
             }
         }
+            break;
 
-        if(list->count() != 0)
-        {
-            object = list->at(maxIdx);
-            p->thumb_location = analizeObject( list->at(minIdx) );
-        }
-    }
-        break;
+        case TypeObjectPhotoSize:
+            object = static_cast<PhotoSizeObject*>(target)->location();
+            break;
 
-    case TypeObjectPhotoSize:
-        object = static_cast<PhotoSizeObject*>(target)->location();
-        break;
+        case TypeObjectUserProfilePhoto:
+            object = static_cast<UserProfilePhotoObject*>(target)->photoBig();
+            p->thumb_location = analyzeObject( static_cast<UserProfilePhotoObject*>(target)->photoSmall() );
+            if(targetType) *targetType = TypeTargetUserPhoto;
+            if(targetPointer) *targetPointer = object;
+            break;
 
-    case TypeObjectUserProfilePhoto:
-        object = static_cast<UserProfilePhotoObject*>(target)->photoBig();
-        p->thumb_location = analizeObject( static_cast<UserProfilePhotoObject*>(target)->photoSmall() );
-        if(targetType) *targetType = TypeTargetUserPhoto;
-        if(targetPointer) *targetPointer = object;
-        break;
+        case TypeObjectChatPhoto:
+            object = static_cast<ChatPhotoObject*>(target)->photoBig();
+            p->thumb_location = analyzeObject( static_cast<ChatPhotoObject*>(target)->photoSmall() );
+            if(targetType) *targetType = TypeTargetChatPhoto;
+            if(targetPointer) *targetPointer = object;
 
-    case TypeObjectChatPhoto:
-        object = static_cast<ChatPhotoObject*>(target)->photoBig();
-        p->thumb_location = analizeObject( static_cast<ChatPhotoObject*>(target)->photoSmall() );
-        if(targetType) *targetType = TypeTargetChatPhoto;
-        if(targetPointer) *targetPointer = object;
-        break;
+            break;
 
-    case TypeObjectEmpty:
-        object = 0;
-        if(targetType) *targetType = TypeTargetUnknown;
-        if(targetPointer) *targetPointer = object;
-        break;
+        case TypeObjectEmpty:
+            object = 0;
+            if(targetType) *targetType = TypeTargetUnknown;
+            if(targetPointer) *targetPointer = object;
+            break;
+        default:
+            qWarning() << "analyzeObject(): Detected unknown object type!";
     }
 
-    return analizeObject(object, targetType, targetPointer);
+    return analyzeObject(object, targetType, targetPointer);
 }
 
 TelegramFileHandler::ObjectType TelegramFileHandler::detectObjectType(QObject *obj)

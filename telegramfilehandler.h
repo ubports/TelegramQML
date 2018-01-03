@@ -159,7 +159,7 @@ private Q_SLOTS:
     void emitPathChanges();
 
 private:
-    FileLocationObject *analizeObject(QObject *target, int *targetType = 0, QObject **targetPointer = 0);
+    FileLocationObject *analyzeObject(QObject *target, int *targetType = 0, QObject **targetPointer = 0);
     ObjectType detectObjectType(QObject *obj);
     void detectObjectType();
 
