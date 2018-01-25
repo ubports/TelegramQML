@@ -3773,6 +3773,7 @@ class TELEGRAMQMLSHARED_EXPORT ChatObject : public TqObject
     Q_PROPERTY(ChatPhotoObject* photo READ photo WRITE setPhoto NOTIFY photoChanged)
     Q_PROPERTY(qint64 accessHash READ accessHash WRITE setAccessHash NOTIFY accessHashChanged)
     Q_PROPERTY(bool left READ left WRITE setLeft NOTIFY leftChanged)
+    Q_PROPERTY(bool megaGroup READ megaGroup WRITE setMegaGroup NOTIFY megaGroupChanged)
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
 public:
@@ -3785,6 +3786,7 @@ public:
         _date = another.date();
         _photo = new ChatPhotoObject(another.photo(), this);
         _left = another.left();
+        _megaGroup = another.megagroup();
         _classType = another.classType();
         _accessHash = another.accessHash();
 
@@ -3890,6 +3892,18 @@ public:
         Q_EMIT changed();
     }
 
+    bool megaGroup() const {
+        return _megaGroup;
+    }
+
+    void setMegaGroup(bool value) {
+        if( value == _megaGroup )
+            return;
+        _megaGroup = value;
+        Q_EMIT megaGroupChanged();
+        Q_EMIT changed();
+    }
+
     quint32 classType() const {
         return _classType;
     }
@@ -3918,6 +3932,8 @@ public:
         Q_EMIT photoChanged();
         _left = another.left();
         Q_EMIT leftChanged();
+        _megaGroup = another.megagroup();
+        Q_EMIT megaGroupChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
         _accessHash = another.accessHash();
@@ -3935,6 +3951,7 @@ Q_SIGNALS:
     void photoChanged();
     void accessHashChanged();
     void leftChanged();
+    void megaGroupChanged();
     void classTypeChanged();
 
 private:
@@ -3946,6 +3963,7 @@ private:
     ChatPhotoObject* _photo;
     qint64 _accessHash;
     bool _left;
+    bool _megaGroup;
     quint32 _classType;
 
 };

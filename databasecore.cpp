@@ -104,8 +104,8 @@ void DatabaseCore::insertChat(const DbChat &dchat)
     begin();
     const Chat &chat = dchat.chat;
     QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Chats (id, participantsCount, version, title, date, geo, left, type, accessHash, photoId, photoBigLocalId, photoBigSecret, photoBigDcId, photoBigVolumeId, photoSmallLocalId, photoSmallSecret, photoSmallDcId, photoSmallVolumeId) "
-                  "VALUES (:id, :participantsCount, :version, :title, :date, :geo, :left, :type, :accessHash, :photoId, :photoBigLocalId, :photoBigSecret, :photoBigDcId, :photoBigVolumeId, :photoSmallLocalId, :photoSmallSecret, :photoSmallDcId, :photoSmallVolumeId);");
+    query.prepare("INSERT OR REPLACE INTO Chats (id, participantsCount, version, title, date, geo, left, megagroup, type, accessHash, photoId, photoBigLocalId, photoBigSecret, photoBigDcId, photoBigVolumeId, photoSmallLocalId, photoSmallSecret, photoSmallDcId, photoSmallVolumeId) "
+                  "VALUES (:id, :participantsCount, :version, :title, :date, :geo, :left, :megagroup, :type, :accessHash, :photoId, :photoBigLocalId, :photoBigSecret, :photoBigDcId, :photoBigVolumeId, :photoSmallLocalId, :photoSmallSecret, :photoSmallDcId, :photoSmallVolumeId);");
 
     query.bindValue(":id",chat.id() );
     query.bindValue(":participantsCount",chat.participantsCount() );
@@ -114,6 +114,7 @@ void DatabaseCore::insertChat(const DbChat &dchat)
     query.bindValue(":date",chat.date() );
     query.bindValue(":geo",0 );
     query.bindValue(":left",chat.left() );
+    query.bindValue(":megagroup",chat.megagroup() );
     query.bindValue(":type",chat.classType() );
     query.bindValue(":accessHash", chat.accessHash());
 
@@ -647,6 +648,7 @@ void DatabaseCore::readChats()
         chat.setDate( record.value("date").toLongLong() );
         chat.setParticipantsCount( record.value("participantsCount").toLongLong() );
         chat.setLeft( record.value("left").toBool() );
+        chat.setMegagroup(record.value("megagroup").toBool());
         chat.setClassType( static_cast<Chat::ChatClassType>(record.value("type").toLongLong()) );
         chat.setAccessHash(record.value("accessHash").toLongLong());
         chat.setPhoto(photo);
@@ -846,6 +848,16 @@ void DatabaseCore::update_db()
         query.exec();
 
         db_version = 9;
+    }
+
+    if (db_version == 9)
+    {
+        qWarning() << "Databasecore: updating db to version 10...";
+        QSqlQuery query(db);
+        query.prepare("ALTER TABLE chats ADD COLUMN megagroup BOOLEAN");
+        query.exec();
+
+        db_version = 10;
     }
 
     qWarning() << "Databasecore: updating db was successful!";
