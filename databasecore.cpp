@@ -349,6 +349,8 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         return;
     }
 
+    qWarning() << "Loading" << query.size() << "messages";
+    qWarning() << getLastExecutedQuery(query);
     while(query.next())
     {
         const QSqlRecord &record = query.record();
@@ -1443,6 +1445,37 @@ QList<PhotoSize> DatabaseCore::readPhotoSize(qint64 pid)
     return list;
 }
 
+int DatabaseCore::getMessagesAvailable(const Peer &peer)
+{
+    qint64 result = -1;
+    QSqlQuery query(db);
+    if( peer.classType() == Peer::typePeerChat || peer.classType() == Peer::typePeerChannel )
+        query.prepare("SELECT COUNT(Id) as numId FROM Messages WHERE toId=:chatId AND toPeerType=:toPeerType");
+    else
+        query.prepare("SELECT COUNT(Id) as numId FROM Messages WHERE toPeerType=:toPeerType AND "
+                      "((toId=:userId AND out=1) OR (fromId=:userId AND out=0))");
+
+    query.bindValue(":userId", peer.userId());
+    query.bindValue(":chatId", peer.classType()==Peer::typePeerChat ? peer.chatId() : peer.channelId());
+    query.bindValue(":toPeerType", peer.classType());
+
+    bool res = query.exec();
+    if(!res)
+    {
+        qDebug() << __FUNCTION__ << query.lastError();
+        return -1;
+    }
+
+    qWarning() << getLastExecutedQuery(query);
+
+    if(query.next())
+    {
+        const QSqlRecord &record = query.record();
+        result = record.value("numId").toLongLong();
+    }
+    return result;
+}
+
 void DatabaseCore::begin()
 {
     if(commit_timer)
@@ -1478,6 +1511,18 @@ void DatabaseCore::timerEvent(QTimerEvent *e)
     {
         commit();
     }
+}
+
+QString DatabaseCore::getLastExecutedQuery(const QSqlQuery& query)
+{
+    QString str = query.lastQuery();
+    QMapIterator<QString, QVariant> it(query.boundValues());
+    while (it.hasNext())
+    {
+        it.next();
+        str.replace(it.key(),it.value().toString());
+    }
+    return str;
 }
 
 DatabaseCore::~DatabaseCore()

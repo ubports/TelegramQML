@@ -29,6 +29,8 @@ public:
     DatabaseCore(const QString &path, const QString &configPath, const QString &phoneNumber, QObject *parent = 0);
     ~DatabaseCore();
 
+    int getMessagesAvailable(const Peer &peer);
+
 public Q_SLOTS:
     void setEncrypter(DatabaseAbstractEncryptor *encrypter);
     DatabaseAbstractEncryptor *encrypter() const;
@@ -103,6 +105,8 @@ private:
     Photo readPhoto(qint64 id);
     QPair<QByteArray, QByteArray> readMediaKey(qint64 mediaId);
     QList<PhotoSize> readPhotoSize(qint64 pid);
+
+    QString getLastExecutedQuery(const QSqlQuery& query);
 
     void begin();
     void commit();

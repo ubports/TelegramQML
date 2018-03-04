@@ -206,12 +206,19 @@ void TelegramMessagesModel::refresh()
 
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
+    //Trying to prevent unnecessary loading of messages that are already in the Db.
     if (p->telegram->connected())
     {
-    tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
+        int numMessages = p->telegram->database()->getMessagesAvailable(TelegramMessagesModel::peer());
+        qWarning() << "local no of msgs:" << numMessages;
+        if (numMessages < (p->load_count + p->stepCount))
+        {
+            qWarning() << "Loading missing messages from server ";
+            tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
+        }
     }
-    else
-        p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
+    qWarning() << "Loading msgs with limit" << p->stepCount << "offset" << p->load_count << "from Db";
+    p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
 }
 
 void TelegramMessagesModel::loadMore(bool force)
@@ -244,13 +251,20 @@ void TelegramMessagesModel::loadMore(bool force)
 
     const InputPeer & peer = p->telegram->getInputPeer(peerId());
 
+    //Trying to prevent unnecessary loading of messages that are already in the Db.
     if (p->telegram->connected())
     {
-        tgObject->messagesGetHistory(peer, 0, p->load_count, p->load_limit, p->maxId, 0);
-        p->refreshing = true;
+        int numMessages = p->telegram->database()->getMessagesAvailable(TelegramMessagesModel::peer());
+        qWarning() << "local no of msgs:" << numMessages;
+        if (numMessages < (p->load_count + p->stepCount))
+        {
+            qWarning() << "Loading missing messages from server ";
+            tgObject->messagesGetHistory(peer, 0, p->load_count, p->load_limit, p->maxId, 0);
+            p->refreshing = true;
+        }
     }
-    else
-        p->telegram->database()->readMessages(TelegramMessagesModel::peer(), p->load_count, p->stepCount);
+    qWarning() << "Loading msgs with limit" << p->stepCount << "offset" << p->load_count << "from Db";
+    p->telegram->database()->readMessages(TelegramMessagesModel::peer(), p->load_count, p->stepCount);
 
     Q_EMIT refreshingChanged();
 }

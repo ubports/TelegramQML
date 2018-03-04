@@ -38,6 +38,7 @@ public:
     void setEncrypter(DatabaseAbstractEncryptor *encrypter);
     DatabaseAbstractEncryptor *encrypter() const;
 
+
 public Q_SLOTS:
     void insertUser(const User &user);
     void insertChat(const Chat &chat);
@@ -59,6 +60,7 @@ public Q_SLOTS:
 
     void blockUser(qint64 userId);
     void unblockUser(qint64 userId);
+    int getMessagesAvailable(const Peer &peer);
 
 Q_SIGNALS:
     void userFounded(const User &user);

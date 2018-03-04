@@ -176,6 +176,11 @@ void Database::unblockUser(qint64 userId)
     QMetaObject::invokeMethod(this->core, "unblockUser", Qt::QueuedConnection, Q_ARG(qint64, userId));
 }
 
+int Database::getMessagesAvailable(const Peer &peer)
+{
+    return this->core->getMessagesAvailable(peer);
+}
+
 void Database::userFounded_slt(const DbUser &user)
 {
     Q_EMIT userFounded(user.user);
