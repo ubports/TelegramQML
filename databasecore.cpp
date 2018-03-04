@@ -349,8 +349,6 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         return;
     }
 
-    qWarning() << "Loading" << query.size() << "messages";
-    qWarning() << getLastExecutedQuery(query);
     while(query.next())
     {
         const QSqlRecord &record = query.record();
@@ -860,6 +858,19 @@ void DatabaseCore::update_db()
         query.exec();
 
         db_version = 10;
+    }
+
+    if (db_version == 10)
+    {
+        qWarning() << "Databasecore: updating db to version 11...";
+        QSqlQuery query(db);
+        query.prepare("create index toPeerType_idx on Messages (toPeerType)");
+        query.exec();
+        query.prepare("create index toId_idx on Messages (toId)");
+        query.exec();
+        query.prepare("create index fromId_idx on Messages (fromId)");
+        query.exec();
+        db_version = 11;
     }
 
     qWarning() << "Databasecore: updating db was successful!";
@@ -1465,8 +1476,6 @@ int DatabaseCore::getMessagesAvailable(const Peer &peer)
         qDebug() << __FUNCTION__ << query.lastError();
         return -1;
     }
-
-    qWarning() << getLastExecutedQuery(query);
 
     if(query.next())
     {
