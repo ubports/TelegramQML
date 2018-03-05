@@ -3774,6 +3774,10 @@ class TELEGRAMQMLSHARED_EXPORT ChatObject : public TqObject
     Q_PROPERTY(qint64 accessHash READ accessHash WRITE setAccessHash NOTIFY accessHashChanged)
     Q_PROPERTY(bool left READ left WRITE setLeft NOTIFY leftChanged)
     Q_PROPERTY(bool megaGroup READ megaGroup WRITE setMegaGroup NOTIFY megaGroupChanged)
+    Q_PROPERTY(bool isCreator READ isCreator WRITE setIsCreator NOTIFY isCreatorChanged)
+    Q_PROPERTY(bool isEditor READ isEditor WRITE setIsEditor NOTIFY isEditorChanged)
+    Q_PROPERTY(bool isModerator READ isModerator WRITE setIsModerator NOTIFY isModeratorChanged)
+
     Q_PROPERTY(quint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
 
 public:
@@ -3904,6 +3908,42 @@ public:
         Q_EMIT changed();
     }
 
+    bool isCreator() const {
+        return _isCreator;
+    }
+
+    void setIsCreator(bool value) {
+        if( value == _isCreator )
+            return;
+        _isCreator = value;
+        Q_EMIT isCreatorChanged();
+        Q_EMIT changed();
+    }
+
+    bool isEditor() const {
+        return _isEditor;
+    }
+
+    void setIsEditor(bool value) {
+        if( value == _isEditor )
+            return;
+        _isEditor = value;
+        Q_EMIT isEditorChanged();
+        Q_EMIT changed();
+    }
+
+    bool isModerator() const {
+        return _isModerator;
+    }
+
+    void setIsModerator(bool value) {
+        if( value == _isModerator )
+            return;
+        _isModerator = value;
+        Q_EMIT isModeratorChanged();
+        Q_EMIT changed();
+    }
+
     quint32 classType() const {
         return _classType;
     }
@@ -3952,6 +3992,9 @@ Q_SIGNALS:
     void accessHashChanged();
     void leftChanged();
     void megaGroupChanged();
+    void isCreatorChanged();
+    void isModeratorChanged();
+    void isEditorChanged();
     void classTypeChanged();
 
 private:
@@ -3964,6 +4007,9 @@ private:
     qint64 _accessHash;
     bool _left;
     bool _megaGroup;
+    bool _isCreator;
+    bool _isModerator;
+    bool _isEditor;
     quint32 _classType;
 
 };

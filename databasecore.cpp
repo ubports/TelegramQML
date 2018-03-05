@@ -873,6 +873,15 @@ void DatabaseCore::update_db()
         db_version = 11;
     }
 
+    if (db_version == 11)
+    {
+        qWarning() << "Databasecore: updating db to version 12...";
+        QSqlQuery query(db);
+        query.prepare("create index peer_idx on Dialogs (peer)");
+        query.exec();
+        db_version = 12;
+    }
+
     qWarning() << "Databasecore: updating db was successful!";
     setValue("version", QString::number(db_version) );
 }
