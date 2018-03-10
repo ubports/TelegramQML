@@ -109,6 +109,8 @@ public:
     bool phoneInvited;
     bool phoneChecked;
 
+    bool busy;
+
     QString authSignInCode;
     QString authSignUpError;
     QString authSignInError;
@@ -253,6 +255,8 @@ TelegramQml::TelegramQml(QObject *parent) :
     p->phoneInvited = false;
     p->phoneChecked = false;
 
+    p->busy = false;
+
     p->loggingOut = false;
     p->logout_req_id = 0;
     p->checkphone_req_id = 0;
@@ -338,6 +342,15 @@ void TelegramQml::setTempPath(const QString &tempPath)
 
     p->tempPath = tempPath;
     Q_EMIT tempPathChanged();
+}
+
+void TelegramQml::setBusy(const bool busy)
+{
+    if (p->busy == busy)
+        return;
+    p->busy = busy;
+    Q_EMIT busyChanged();
+
 }
 
 QString TelegramQml::homePath() const
@@ -702,6 +715,12 @@ bool TelegramQml::connected() const
 
     return p->telegram->isConnected();
 }
+
+bool TelegramQml::busy() const
+{
+    return p->busy;
+}
+
 
 bool TelegramQml::uploadingProfilePhoto() const
 {
@@ -4754,12 +4773,6 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
     ChatObject *obj = p->chats.value(c.id());
     Chat tempChat = c;
 
-    //Channels report their participants count differently
-    if (tempChat.classType() == Chat::typeChannel )
-    {
-        tempChat.setParticipantsCount(chatFull.participantsCount());
-    }
-
     if( !obj )
     {
         obj = new ChatObject(tempChat, this);
@@ -4770,6 +4783,43 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
         return;
     else
         *obj = tempChat;
+
+    //Check for user priviledges in this chat or channel
+    if (tempChat.classType() == Chat::typeChannel )
+    {
+        InputChannel channel(InputChannel::typeInputChannel);
+        channel.setChannelId(c.id());
+        channel.setAccessHash(c.accessHash());
+        InputUser user(InputUser::typeInputUserSelf);
+        user.setUserId(me());
+        TelegramCore::CallbackError error;
+        TelegramCore::Callback<ChannelsChannelParticipant> callback = [this, obj](TG_CHANNELS_GET_PARTICIPANT_CALLBACK) {
+            if(!error.null) {
+                onServerError(msgId, error.errorCode, error.errorText);
+                return;
+            }
+            obj->setIsCreator(false);
+            obj->setIsEditor(false);
+            obj->setIsModerator(false);
+            switch( static_cast<int>(result.participant().classType())) {
+                case ChannelParticipant::typeChannelParticipantCreator:
+                    obj->setIsCreator(true);
+                break;
+                case ChannelParticipant::typeChannelParticipantEditor:
+                    obj->setIsEditor(true);
+                break;
+                case ChannelParticipant::typeChannelParticipantModerator:
+                    obj->setIsModerator(true);
+                break;
+            }
+        };
+        p->telegram->channelsGetParticipant(channel, user, callback);
+
+    }
+    else
+    {
+
+    }
 
     if(!fromDb)
         p->database->insertChat(tempChat);

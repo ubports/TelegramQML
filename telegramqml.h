@@ -113,6 +113,8 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(bool authPhoneChecked    READ authPhoneChecked    NOTIFY authPhoneCheckedChanged   )
     Q_PROPERTY(bool connected           READ connected           NOTIFY connectedChanged          )
 
+    Q_PROPERTY(bool busy READ busy WRITE setBusy NOTIFY busyChanged         )
+
     Q_PROPERTY(QString authSignUpError READ authSignUpError NOTIFY authSignUpErrorChanged)
     Q_PROPERTY(QString authSignInError READ authSignInError NOTIFY authSignInErrorChanged)
     Q_PROPERTY(QString error           READ error           NOTIFY errorChanged          )
@@ -214,6 +216,9 @@ public:
     bool authPhoneRegistered() const;
     bool authPhoneInvited() const;
     bool connected() const;
+
+    bool busy() const;
+    void setBusy(const bool busy);
 
     bool uploadingProfilePhoto() const;
 
@@ -434,6 +439,8 @@ Q_SIGNALS:
     void phoneChecked(QString phone, const AuthCheckedPhone &result);
     void authPasswordProtectedError();
     void connectedChanged();
+
+    void busyChanged();
 
     void authSignUpErrorChanged();
     void authSignInErrorChanged();

@@ -184,8 +184,9 @@ void TelegramDialogsModel::refreshDatabase()
 {
     if(!p->telegram)
         return;
-
+    telegram()->setBusy(true);
     p->telegram->database()->readFullDialogs();
+    telegram()->setBusy(false);
 }
 
 void TelegramDialogsModel::recheck()
