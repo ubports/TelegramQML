@@ -4785,7 +4785,7 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
         *obj = tempChat;
 
     //Check for user priviledges in this chat or channel
-    if (tempChat.classType() == Chat::typeChannel )
+    if (tempChat.classType() == Chat::typeChannel && !tempChat.megagroup())
     {
         InputChannel channel(InputChannel::typeInputChannel);
         channel.setChannelId(c.id());
