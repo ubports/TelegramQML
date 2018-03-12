@@ -4784,7 +4784,7 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
     else
         *obj = tempChat;
 
-    //Check for user priviledges in this chat or channel
+    //Check for user privileges in this chat or channel
     if (tempChat.classType() == Chat::typeChannel && !tempChat.megagroup())
     {
         InputChannel channel(InputChannel::typeInputChannel);
@@ -4794,13 +4794,11 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
         user.setUserId(me());
         TelegramCore::CallbackError error;
         TelegramCore::Callback<ChannelsChannelParticipant> callback = [this, obj](TG_CHANNELS_GET_PARTICIPANT_CALLBACK) {
-            if(!error.null) {
-                onServerError(msgId, error.errorCode, error.errorText);
-                return;
-            }
             obj->setIsCreator(false);
             obj->setIsEditor(false);
             obj->setIsModerator(false);
+            if(!error.null)
+                return;
             switch( static_cast<int>(result.participant().classType())) {
                 case ChannelParticipant::typeChannelParticipantCreator:
                     obj->setIsCreator(true);
@@ -5133,11 +5131,16 @@ void TelegramQml::insertUpdate(const Update &update)
 
     case Update::typeUpdateChannelMessageViews:
     {
-        qWarning() << "Received updated channel message views:";
         auto dId = update.channelId();
-        auto msgId = update.message().id();
-        auto unifiedMsgId = QmlUtils::getUnifiedMessageKey(msgId, dId);
+        auto msgId = update.id();
+        auto msg = QmlUtils::getUnifiedMessageKey(msgId, dId);
         auto viewCount = update.views();
+        qWarning() << "Received updated channel message views:" << msg << viewCount;
+        MessageObject *obj = p->messages.value(msg);
+        if(obj)
+        {
+            obj->setViews(viewCount);
+        }
 
     }
         break;
