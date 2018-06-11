@@ -1901,7 +1901,7 @@ void TelegramQml::forwardMessages(QList<int> msgIds, qint32 toPeerId, PeerObject
     }
 
     const InputPeer &fwdFromPeer = getInputPeer(peerId);
-    std::stable_sort(msgIds.begin(), msgIds.end(), qGreater<int>());
+    std::sort(msgIds.begin(), msgIds.end());
 
     QList<qint64> randoms;
     for(int i=0; i<msgIds.count(); i++)
@@ -5916,7 +5916,7 @@ bool checkMessageLessThan( qint64 a, qint64 b )
 {
     MessageObject *am = telegramp_qml_tmp->messages.value(a);
     MessageObject *bm = telegramp_qml_tmp->messages.value(b);
-    if(am && bm)
+    if(am && bm && am->date() != bm->date())
         return am->date() > bm->date();
     else
         return a > b;
