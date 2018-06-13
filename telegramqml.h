@@ -55,6 +55,7 @@ class FileLocationObject;
 class PhotoObject;
 class ContactObject;
 class DialogObject;
+class MessageEntityObject;
 class MessageObject;
 class InputPeerObject;
 class ChatFullObject;

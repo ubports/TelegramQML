@@ -5262,6 +5262,187 @@ private:
 
 Q_DECLARE_METATYPE(MessageMediaObject*)
 
+class TELEGRAMQMLSHARED_EXPORT MessageEntityObject : public TqObject
+{
+    Q_ENUMS(MessageEntityEnum)
+    Q_OBJECT
+    Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
+    Q_PROPERTY(qint32 length READ length WRITE setLength NOTIFY lengthChanged)
+    Q_PROPERTY(qint32 offset READ offset WRITE setOffset NOTIFY offsetChanged)
+    Q_PROPERTY(QString url READ url WRITE setUrl NOTIFY urlChanged)
+    Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
+    Q_PROPERTY(MessageEntityEnum messageEntityEnum READ messageEntityEnum NOTIFY messageEntityEnumChanged)
+public:
+    MessageEntityObject(const MessageEntity & another, QObject *parent = 0) : TqObject(parent){
+        (void)another;
+        _language = another.language();
+        _length = another.length();
+        _offset = another.offset();
+        _classType = another.classType();
+
+    }
+    MessageEntityObject(QObject *parent = 0) :
+        TqObject(parent),
+        _length(0),
+        _offset(0),
+        _classType(0)
+    {}
+
+    ~MessageEntityObject(){}
+
+    QString language() const {
+        return _language;
+    }
+
+    void setLanguage(QString value) {
+        if(value == _language)
+            return;
+        _language = value;
+        Q_EMIT languageChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 length() const {
+        return _length;
+    }
+
+    void setLength(qint32 value) {
+        if( value == _length)
+            return;
+        _length = value;
+        Q_EMIT lengthChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 offset() const {
+        return _offset;
+    }
+
+    void setOffset(qint32 value) {
+        if( value == _offset)
+            return;
+        _offset = value;
+        Q_EMIT offsetChanged();
+        Q_EMIT changed();
+    }
+
+    QString url() const {
+        return _url;
+    }
+
+    void setUrl(QString value) {
+        if(value == _url)
+            return;
+        _url = value;
+        Q_EMIT urlChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 classType() const {
+        return _classType;
+    }
+
+    void setClassType(qint32 value) {
+        if( value == _classType)
+            return;
+        _classType = value;
+        Q_EMIT classTypeChanged();
+        Q_EMIT messageEntityEnumChanged();
+        Q_EMIT changed();
+    }
+
+    enum MessageEntityEnum {
+        Bold,
+        BotCommand,
+        Code,
+        Email,
+        Hashtag,
+        Italic,
+        Mention,
+        Pre,
+        TextUrl,
+        Unknown,
+        Url
+    };
+    MessageEntityEnum messageEntityEnum() const;
+    MessageEntityEnum messageEntityEnum()
+    {
+        switch(static_cast<MessageEntity::MessageEntityClassType>(_classType))
+        {
+            case MessageEntity::MessageEntityClassType::typeMessageEntityBold:
+                return MessageEntityEnum::Bold;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityBotCommand:
+                return MessageEntityEnum::BotCommand;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityCode:
+                return MessageEntityEnum::Code;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityEmail:
+                return MessageEntityEnum::Email;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityHashtag:
+                return MessageEntityEnum::Hashtag;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityItalic:
+                return MessageEntityEnum::Italic;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityMention:
+                return MessageEntityEnum::Mention;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityPre:
+                return MessageEntityEnum::Pre;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityTextUrl:
+                return MessageEntityEnum::TextUrl;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityUnknown:
+                return MessageEntityEnum::Unknown;
+            break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityUrl:
+                return MessageEntityEnum::Url;
+            break;
+            default:
+                Q_ASSERT(false);
+        }
+    }
+
+    void operator= ( const MessageEntity & another) {
+        _language = another.language();
+        Q_EMIT languageChanged();
+        _length = another.length();
+        Q_EMIT lengthChanged();
+        _offset = another.offset();
+        Q_EMIT offsetChanged();
+        _url = another.url();
+        Q_EMIT urlChanged();
+        _classType = another.classType();
+        Q_EMIT classTypeChanged();
+        Q_EMIT messageEntityEnumChanged();
+
+    }
+
+Q_SIGNALS:
+
+    void changed();
+    void languageChanged();
+    void lengthChanged();
+    void offsetChanged();
+    void urlChanged();
+    void classTypeChanged();
+    void messageEntityEnumChanged();
+
+private:
+    QString _language;
+    qint32 _length;
+    qint32 _offset;
+    QString _url;
+    qint32 _classType;
+
+};
+
+Q_DECLARE_METATYPE(MessageEntityObject*)
+
 class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
 {
     Q_OBJECT
@@ -5283,6 +5464,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
     Q_PROPERTY(quint32 views READ views WRITE setViews NOTIFY viewsChanged)
+    Q_PROPERTY(QList<MessageEntityObject*> entities READ entities WRITE setEntities NOTIFY entitiesChanged)
 
 public:
     MessageObject(const Message & another, QObject *parent = 0) : TqObject(parent){
@@ -5306,6 +5488,9 @@ public:
         _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
         _views = another.views();
         _hash = another.getHash();
+        _entities.clear();
+        Q_FOREACH(const MessageEntity &entity, another.entities())
+            _entities << new MessageEntityObject(entity, this);
     }
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
@@ -5314,7 +5499,9 @@ public:
         _action(0),
         _media(0),
         _hash(QByteArray())
-    {}
+    {
+        _entities = QList<MessageEntityObject*>();
+    }
 
     ~MessageObject(){}
 
@@ -5530,6 +5717,18 @@ public:
         Q_EMIT changed();
     }
 
+    QList<MessageEntityObject*> entities() {
+        return _entities;
+    }
+
+    void setEntities(QList<MessageEntityObject*> value) {
+        if ( value == _entities)
+            return;
+        _entities = value;
+        Q_EMIT entitiesChanged();
+        Q_EMIT changed();
+    }
+
     bool operator== (const MessageObject *that);
 
 
@@ -5567,6 +5766,10 @@ public:
         _views = another.views();
         Q_EMIT viewsChanged();
         _hash = another.getHash();
+        _entities.clear();
+        Q_FOREACH(const MessageEntity &entity, another.entities())
+            _entities << new MessageEntityObject(entity, this);
+        Q_EMIT entitiesChanged();
     }
 
 Q_SIGNALS:
@@ -5589,6 +5792,7 @@ Q_SIGNALS:
     void classTypeChanged();
     void unifiedIdChanged();
     void viewsChanged();
+    void entitiesChanged();
 
 private:
     qint32 _id;
@@ -5610,6 +5814,7 @@ private:
     qint64 _unifiedId;
     quint32 _views;
     QByteArray _hash;
+    QList<MessageEntityObject*> _entities;
 
 };
 
