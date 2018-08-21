@@ -765,6 +765,7 @@ void TelegramQml::setLogLevel(int level)
 void TelegramQml::authCheckPhone(const QString &phone)
 {
     p->checkphone_req_id = 0;
+    qWarning() << "Trying to check the phone no: " << phone;
     qint64 id = p->telegram->authCheckPhone(phone);
     p->phoneCheckIds.insert(id, phone);
 }
@@ -1719,6 +1720,7 @@ void TelegramQml::authSignIn(const QString &code, bool retry)
         p->authCheckPhoneRetry = 0;
 
     p->authSignInCode = code;
+    qWarning() << "Trying to sign in: " << code << retry;
     p->telegram->authSignIn(p->authSignInCode);
 
     p->authNeeded = false;
@@ -1734,6 +1736,7 @@ void TelegramQml::authSignUp(const QString &code, const QString &firstName, cons
     if( !p->telegram )
         return;
 
+    qWarning() << "Trying to sign up for a new account: " << code << firstName << lastName;
     p->telegram->authSignUp(code, firstName, lastName);
 
     p->authNeeded = false;
@@ -1751,6 +1754,7 @@ void TelegramQml::authCheckPassword(const QString &pass)
 
     QByteArray salt = QByteArray::fromHex(p->currentSalt.toUtf8());
     QByteArray passData = salt + pass.toUtf8() + salt;
+    qWarning() << "Trying to check the password: " << salt;
     p->telegram->authCheckPassword(QCryptographicHash::hash(passData, QCryptographicHash::Sha256));
 }
 
@@ -3270,7 +3274,6 @@ void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
         Q_EMIT authPhoneInvitedChanged();
         Q_EMIT authPhoneCheckedChanged();
 
-//        p->telegram->accountGetPassword();
         if(p->authSignInCode.isEmpty() || p->authCheckPhoneRetry>=3)
         {
             authSendCode();
@@ -3278,7 +3281,10 @@ void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
         else
         {
             qDebug() << __FUNCTION__ << "retrying..." << p->authCheckPhoneRetry;
-            authSignIn(p->authSignInCode, true);
+            if(p->phoneRegistered)
+                authSignIn(p->authSignInCode, true);
+            else
+                qWarning() << "This phone is not registered yet. Logical error in signup procedure?";
             p->authCheckPhoneRetry++;
         }
     } else {
@@ -4490,23 +4496,24 @@ void TelegramQml::uploadGetFile_slt(qint64 id, const StorageFileType &type, qint
     download->setPartId(partId);
     download->setDownloaded(downloaded);
 
-    const QString & download_file = download->file()->fileName().isEmpty()? fileLocation(obj) : download->file()->fileName();
     if(total)
         download->setTotal(total);
 
     if( !download->file()->isOpen() )
     {
-        download->file()->setFileName(download_file);
-        if( !download->file()->open(QFile::WriteOnly) )
-            return;
+        download->file()->open();
+        qWarning() << "Opened temporary file" << download->file()->fileName();
     }
-
     download->file()->write(bytes);
 
     if( downloaded >= download->total() && total == downloaded )
     {
+        const QString & download_file = fileLocation(obj);
         download->file()->flush();
         download->file()->close();
+        qWarning() << "Copying temporary file" << download->file()->fileName() << "to final file" << download_file;
+        if (!download->file()->copy(download_file))
+            return;
 
         const QMimeType & t = p->mime_db.mimeTypeForFile(download_file);
         const QStringList & suffixes = t.suffixes();

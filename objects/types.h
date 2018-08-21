@@ -26,7 +26,7 @@ class TELEGRAMQMLSHARED_EXPORT DownloadObject : public TqObject
     Q_PROPERTY(qint32 partId READ partId WRITE setPartId NOTIFY partIdChanged)
     Q_PROPERTY(qint32 downloaded READ downloaded WRITE setDownloaded NOTIFY downloadedChanged)
     Q_PROPERTY(qint32 total READ total WRITE setTotal NOTIFY totalChanged)
-    Q_PROPERTY(QFile* file READ file WRITE setFile NOTIFY fileChanged)
+    Q_PROPERTY(QTemporaryFile* file READ file WRITE setFile NOTIFY fileChanged)
 
 public:
     DownloadObject(QObject *parent = 0) : TqObject(parent){
@@ -35,9 +35,11 @@ public:
         _partId = 0;
         _downloaded = 0;
         _total = 0;
-        _file = new QFile(this);
+        _file = new QTemporaryFile(this);
     }
-    ~DownloadObject(){}
+    ~DownloadObject(){
+        _file->deleteLater();
+    }
 
     qint64 fileId() const {
         return _fileId;
@@ -111,11 +113,11 @@ public:
         Q_EMIT changed();
     }
 
-    QFile* file() const {
+    QTemporaryFile* file() const {
         return _file;
     }
 
-    void setFile(QFile* value) {
+    void setFile(QTemporaryFile* value) {
         if( value == _file )
             return;
         _file = value;
@@ -140,7 +142,7 @@ private:
     qint32 _partId;
     qint32 _downloaded;
     qint32 _total;
-    QFile* _file;
+    QTemporaryFile* _file;
 
 };
 
@@ -273,7 +275,10 @@ public:
     FileLocationObject(QObject *parent = 0) :
         TqObject(parent),
         _download(0){}
-    ~FileLocationObject(){}
+
+    ~FileLocationObject(){
+        _download->deleteLater();
+    }
 
     DownloadObject* download() const {
         return _download;
