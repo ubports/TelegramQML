@@ -762,14 +762,6 @@ void TelegramQml::setLogLevel(int level)
     }
 }
 
-void TelegramQml::authCheckPhone(const QString &phone)
-{
-    p->checkphone_req_id = 0;
-    qWarning() << "Trying to check the phone no: " << phone;
-    qint64 id = p->telegram->authCheckPhone(phone);
-    p->phoneCheckIds.insert(id, phone);
-}
-
 // WARNING: Push notifications supported for one account only!
 void TelegramQml::accountRegisterDevice(const QString &token, const QString &appVersion) {
     p->userdata->setPushToken(token);
@@ -2924,8 +2916,6 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::authNeeded, this, &TelegramQml::authNeeded_slt);
     connect( p->telegram, &Telegram::authLoggedIn, this, &TelegramQml::authLoggedIn_slt);
     connect( p->telegram, &Telegram::authLogOutAnswer, this, &TelegramQml::authLogOut_slt);
-    connect( p->telegram, &Telegram::authCheckPhoneAnswer, this, &TelegramQml::authCheckPhone_slt);
-    connect( p->telegram, &Telegram::authCheckPhoneError, this, &TelegramQml::authCheckPhoneError_slt);
     connect( p->telegram, &Telegram::authSendCallAnswer, this, &TelegramQml::authSendCall_slt);
     connect( p->telegram, &Telegram::authSendCodeAnswer, this, &TelegramQml::authSendCode_slt);
     connect( p->telegram, &Telegram::authSendCodeError, this, &TelegramQml::authSendCodeError_slt);
@@ -3184,10 +3174,9 @@ void TelegramQml::authNeeded_slt()
     Q_EMIT authLoggedInChanged();
     Q_EMIT meChanged();
 
-    if( p->telegram && !p->checkphone_req_id )
-        p->checkphone_req_id = p->telegram->authCheckPhone();
+    if( p->telegram )
+        p->telegram->authSendCode();
 
-//    p->telegram->accountUpdateStatus(!p->online || p->invisible);
 }
 
 void TelegramQml::authLoggedIn_slt()
@@ -3228,10 +3217,13 @@ void TelegramQml::authSendCode_slt(qint64 msgId, const AuthSentCode &result)
 {
     Q_UNUSED(msgId)
     p->authNeeded = true;
-    p->authLoggedIn = false;
-
     Q_EMIT authNeededChanged();
+    p->authLoggedIn = false;
     Q_EMIT authLoggedInChanged();
+    p->phoneChecked = true;
+    Q_EMIT authPhoneCheckedChanged();
+    p->phoneRegistered = result.phoneRegistered();
+    Q_EMIT authPhoneRegisteredChanged();
     Q_EMIT authCodeRequested(result.phoneRegistered(), result.sendCallTimeout() );
 }
 
@@ -3258,44 +3250,6 @@ void TelegramQml::authCheckPassword_slt(qint64 id, const AuthAuthorization& resu
     Q_UNUSED(id)
 
     insertUser(result.user());
-}
-
-void TelegramQml::authCheckPhone_slt(qint64 id, const AuthCheckedPhone &result)
-{
-    p->checkphone_req_id = 0;
-    QString phone = p->phoneCheckIds.take(id);
-
-    if (phone.isEmpty()) {
-        p->phoneRegistered = result.phoneRegistered();
-        p->phoneInvited = false;
-        p->phoneChecked = true;
-
-        Q_EMIT authPhoneRegisteredChanged();
-        Q_EMIT authPhoneInvitedChanged();
-        Q_EMIT authPhoneCheckedChanged();
-
-        if(p->authSignInCode.isEmpty() || p->authCheckPhoneRetry>=3)
-        {
-            authSendCode();
-        }
-        else
-        {
-            qDebug() << __FUNCTION__ << "retrying..." << p->authCheckPhoneRetry;
-            if(p->phoneRegistered)
-                authSignIn(p->authSignInCode, true);
-            else
-                qWarning() << "This phone is not registered yet. Logical error in signup procedure?";
-            p->authCheckPhoneRetry++;
-        }
-    } else {
-        Q_EMIT phoneChecked(phone, result);
-    }
-}
-
-void TelegramQml::authCheckPhoneError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
-{
-    Q_UNUSED(msgId)
-    p->checkphone_req_id = p->telegram->authCheckPhone();
 }
 
 void TelegramQml::reconnect()
