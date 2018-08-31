@@ -4665,7 +4665,10 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
     Q_EMIT messagesChanged(fromDb && !encrypted);
 
     if(!fromDb && !tempMsg)
+    {
+        m.setMessage(currentMsg->message());
         p->database->insertMessage(m, encrypted);
+    }
     if(encrypted)
         updateEncryptedTopMessage(m);
 
