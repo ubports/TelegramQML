@@ -5369,8 +5369,8 @@ public:
         Unknown,
         Url
     };
-    MessageEntityEnum messageEntityEnum() const;
-    MessageEntityEnum messageEntityEnum()
+    //MessageEntityEnum messageEntityEnum() const;
+    MessageEntityEnum messageEntityEnum() const
     {
         switch(static_cast<MessageEntity::MessageEntityClassType>(_classType))
         {
@@ -5469,34 +5469,10 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
     Q_PROPERTY(quint32 views READ views WRITE setViews NOTIFY viewsChanged)
-    Q_PROPERTY(QList<MessageEntityObject*> entities READ entities WRITE setEntities NOTIFY entitiesChanged)
 
 public:
-    MessageObject(const Message & another, QObject *parent = 0) : TqObject(parent){
-        (void)another;
-        _id = another.id();
-        _sent = true;
-        _encrypted = false;
-        _upload = new UploadObject(this);
-        _toId = new PeerObject(another.toId(), this);
-        _unread = (another.flags() & 0x1);
-        _action = new MessageActionObject(another.action(), this);
-        _fromId = another.fromId();
-        _out = (another.flags() & 0x2);
-        _date = another.date();
-        _media = new MessageMediaObject(another.media(), this);
-        _fwdDate = another.fwdDate();
-        _fwdFromId = new PeerObject(another.fwdFromId(), this);
-        _replyToMsgId = another.replyToMsgId();
-        _message = another.message();
-        _classType = another.classType();
-        _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
-        _views = another.views();
-        _hash = another.getHash();
-        _entities.clear();
-        Q_FOREACH(const MessageEntity &entity, another.entities())
-            _entities << new MessageEntityObject(entity, this);
-    }
+    MessageObject(const Message & another, QObject *parent = 0);
+
     MessageObject(QObject *parent = 0) :
         TqObject(parent),
         _upload(0),
@@ -5505,7 +5481,6 @@ public:
         _media(0),
         _hash(QByteArray())
     {
-        _entities = QList<MessageEntityObject*>();
     }
 
     ~MessageObject(){}
@@ -5686,6 +5661,8 @@ public:
         return _message;
     }
 
+    QString messageWithEntities(QString message, QList<MessageEntity> entities) const;
+
     void setMessage(QString value) {
         if( value == _message )
             return;
@@ -5722,18 +5699,6 @@ public:
         Q_EMIT changed();
     }
 
-    QList<MessageEntityObject*> entities() {
-        return _entities;
-    }
-
-    void setEntities(QList<MessageEntityObject*> value) {
-        if ( value == _entities)
-            return;
-        _entities = value;
-        Q_EMIT entitiesChanged();
-        Q_EMIT changed();
-    }
-
     bool operator== (const MessageObject *that);
 
 
@@ -5762,7 +5727,7 @@ public:
         Q_EMIT fwdFromIdChanged();
         _replyToMsgId = another.replyToMsgId();
         Q_EMIT replyToMsgIdChanged();
-        _message = another.message();
+        _message = messageWithEntities(another.message(), another.entities());
         Q_EMIT messageChanged();
         _classType = another.classType();
         Q_EMIT classTypeChanged();
@@ -5771,10 +5736,6 @@ public:
         _views = another.views();
         Q_EMIT viewsChanged();
         _hash = another.getHash();
-        _entities.clear();
-        Q_FOREACH(const MessageEntity &entity, another.entities())
-            _entities << new MessageEntityObject(entity, this);
-        Q_EMIT entitiesChanged();
     }
 
 Q_SIGNALS:
@@ -5797,7 +5758,6 @@ Q_SIGNALS:
     void classTypeChanged();
     void unifiedIdChanged();
     void viewsChanged();
-    void entitiesChanged();
 
 private:
     qint32 _id;
@@ -5819,7 +5779,6 @@ private:
     qint64 _unifiedId;
     quint32 _views;
     QByteArray _hash;
-    QList<MessageEntityObject*> _entities;
 
 };
 
