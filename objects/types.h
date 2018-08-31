@@ -5661,12 +5661,22 @@ public:
         return _message;
     }
 
-    QString messageWithEntities(QString message, QList<MessageEntity> entities) const;
+    //Some Regex to match for text entity substitution
+    static QRegExp rxBold;
+    static QRegExp rxItalic;
+    static QRegExp rxCode;
+    //void entitiesFromMessage(QString message, QList<MessageEntity> &entities, QString &plainText);
+
+    QString messageWithEntities(QString message, QList<MessageEntity> entities);
 
     void setMessage(QString value) {
         if( value == _message )
             return;
+        QList<MessageEntity> entities;
+        QString plainText;
+        //MessageObject::entitiesFromMessage(value, entities, plainText);
         _message = value;
+        _entities = entities;
         Q_EMIT messageChanged();
         Q_EMIT changed();
     }
@@ -5779,6 +5789,7 @@ private:
     qint64 _unifiedId;
     quint32 _views;
     QByteArray _hash;
+    QList<MessageEntity> _entities;
 
 };
 
