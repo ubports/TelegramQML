@@ -5369,7 +5369,7 @@ public:
         Unknown,
         Url
     };
-    //MessageEntityEnum messageEntityEnum() const;
+
     MessageEntityEnum messageEntityEnum() const
     {
         switch(static_cast<MessageEntity::MessageEntityClassType>(_classType))
@@ -5484,6 +5484,9 @@ public:
     }
 
     ~MessageObject(){}
+
+    static void getEntitiesFromMessage(const QString messageText, QString &plainText, QList<MessageEntity> &entities);
+    static QString getMessageWithEntities(const QString &plainText, const QList<MessageEntity> &entities);
 
     qint32 id() const {
         return _id;
@@ -5661,24 +5664,22 @@ public:
         return _message;
     }
 
-    //Some Regex to match for text entity substitution
-    static QRegExp rxBold;
-    static QRegExp rxItalic;
-    static QRegExp rxCode;
-    //void entitiesFromMessage(QString message, QList<MessageEntity> &entities, QString &plainText);
-
-    QString messageWithEntities(QString message, QList<MessageEntity> entities);
-
     void setMessage(QString value) {
         if( value == _message )
             return;
-        QList<MessageEntity> entities;
-        QString plainText;
-        //MessageObject::entitiesFromMessage(value, entities, plainText);
         _message = value;
-        _entities = entities;
         Q_EMIT messageChanged();
         Q_EMIT changed();
+    }
+
+    QList<MessageEntity> entities() const {
+        return _entities;
+    }
+
+    void setEntities(QList<MessageEntity> value) {
+        if( value == _entities )
+            return;
+        _entities = value;
     }
 
     quint32 classType() const {
@@ -5710,43 +5711,7 @@ public:
     }
 
     bool operator== (const MessageObject *that);
-
-
-    void operator= ( const Message & another) {
-        _id = another.id();
-        Q_EMIT idChanged();
-        _sent = true;
-        Q_EMIT sentChanged();
-        *_toId = another.toId();
-        Q_EMIT toIdChanged();
-        _unread = (another.flags() & 0x1);
-        Q_EMIT unreadChanged();
-        *_action = another.action();
-        Q_EMIT actionChanged();
-        _fromId = another.fromId();
-        Q_EMIT fromIdChanged();
-        _out = (another.flags() & 0x2);
-        Q_EMIT outChanged();
-        _date = another.date();
-        Q_EMIT dateChanged();
-        *_media = another.media();
-        Q_EMIT mediaChanged();
-        _fwdDate = another.fwdDate();
-        Q_EMIT fwdDateChanged();
-        *_fwdFromId = another.fwdFromId();
-        Q_EMIT fwdFromIdChanged();
-        _replyToMsgId = another.replyToMsgId();
-        Q_EMIT replyToMsgIdChanged();
-        _message = messageWithEntities(another.message(), another.entities());
-        Q_EMIT messageChanged();
-        _classType = another.classType();
-        Q_EMIT classTypeChanged();
-        _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
-        Q_EMIT unifiedIdChanged();
-        _views = another.views();
-        Q_EMIT viewsChanged();
-        _hash = another.getHash();
-    }
+    void operator= ( const Message & another);
 
 Q_SIGNALS:
     void changed();
@@ -5790,6 +5755,9 @@ private:
     quint32 _views;
     QByteArray _hash;
     QList<MessageEntity> _entities;
+
+    //Some Regex to match for text entity substitution
+    static QRegExp rxEntity;
 
 };
 
