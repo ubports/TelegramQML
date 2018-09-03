@@ -5283,6 +5283,7 @@ public:
         _language = another.language();
         _length = another.length();
         _offset = another.offset();
+        _url = another.url();
         _classType = another.classType();
 
     }
@@ -5290,6 +5291,7 @@ public:
         TqObject(parent),
         _length(0),
         _offset(0),
+        _url(""),
         _classType(0)
     {}
 

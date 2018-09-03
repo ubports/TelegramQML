@@ -78,7 +78,7 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
 {
     if (rxEntity.isEmpty())
     {
-        rxEntity = QRegExp("\\*\\*.+\\*\\*|__.+__|```.+```|`.+\b");
+        rxEntity = QRegExp("\\*\\*.+\\*\\*|__.+__|```.+```|`.+`");
         rxEntity.setMinimal(true);
     }
     int offsetCorrection = 0;
@@ -103,7 +103,7 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
             entity.setOffset(pos - offsetCorrection);
             offsetCorrection += 4;
             entities << entity;
-        } else if(match.startsWith("`"))
+        } else if(match.startsWith("`") && !match.startsWith("``"))
         {
             MessageEntity entity(MessageEntity::MessageEntityClassType::typeMessageEntityCode);
             entity.setLength(rxEntity.matchedLength() -2);
@@ -122,7 +122,7 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
     }
 
     plainText = messageText;
-    plainText = plainText.replace("**", "").replace("__", "").replace("```", "");
+    plainText = plainText.replace("**", "").replace("__", "").replace("`", "");
 }
 
 QString MessageObject::getMessageWithEntities(const QString &plainText, const QList<MessageEntity> &entities)
@@ -159,7 +159,7 @@ QString MessageObject::getMessageWithEntities(const QString &plainText, const QL
             break;
             case MessageEntityObject::MessageEntityEnum::Hashtag:
             case MessageEntityObject::MessageEntityEnum::Mention:
-                result.append("<font color=\"#598fe5\">");
+                result.append("<font id=\"social\">");
                 result.append(plainText.mid(entity.offset(), entity.length()));
                 result.append("</font>");
             break;
@@ -170,8 +170,8 @@ QString MessageObject::getMessageWithEntities(const QString &plainText, const QL
                 result.append(plainText.mid(entity.offset(), entity.length()));
                 result.append("</a>");
             break;
-            case MessageEntityObject::MessageEntityEnum::Url:
             case MessageEntityObject::MessageEntityEnum::TextUrl:
+            case MessageEntityObject::MessageEntityEnum::Url:
                 auto url = plainText.mid(entity.offset(), entity.length());
                 result.append("<a href=\"");
                 result.append(entity.url().isEmpty()? url : entity.url());
