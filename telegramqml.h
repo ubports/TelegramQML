@@ -381,6 +381,7 @@ public Q_SLOTS:
 
     void updatesGetState();
     void updatesGetChannelDifference();
+    void updatesGetChannelDifference(qint32 channelId, qint64 accessHash);
 
     bool sleep();
     bool wake();
@@ -545,8 +546,8 @@ private Q_SLOTS:
     void messagesEncryptedChatRequested_slt(qint32 chatId, qint32 date, qint32 creatorId, qint64 creatorAccessHash);
     void messagesEncryptedChatCreated_slt(qint32 chatId);
     void messagesEncryptedChatDiscarded_slt(qint32 chatId);
-    void messagesSendEncrypted_slt(qint64 id, qint32 date, const EncryptedFile &encryptedFile);
-    void messagesSendEncryptedFile_slt(qint64 id, qint32 date, const EncryptedFile &encryptedFile);
+    void messagesSendEncrypted_slt(qint64 id, const MessagesSentEncryptedMessage &result);
+    void messagesSendEncryptedFile_slt(qint64 id, const MessagesSentEncryptedMessage &result);
 
     void messagesGetStickers_slt(qint64 msgId, const MessagesStickers &stickers);
     void messagesGetAllStickers_slt(qint64 msgId, const MessagesAllStickers &stickers);
@@ -567,7 +568,6 @@ private Q_SLOTS:
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
     void updatesGetDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
-    void updatesGetChannelDifference_slt(qint64 msgId, const UpdatesChannelDifference &result);
     void updatesGetChannelDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
     void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
     void updatesGetState_err(qint64 msgId, qint32 errorCode, const QString &errorText);

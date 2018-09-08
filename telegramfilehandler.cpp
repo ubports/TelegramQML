@@ -313,7 +313,6 @@ bool TelegramFileHandler::download()
 {
     if(!p->telegram || !p->location || p->location->localId() == 0 && p->location->dcId() == 0)
     {
-        qWarning() << "Requested download of empty file. Location: " << p->location->fileName() << " " << p->location->localId() << " " << p->location->dcId()  << " " << p->location->accessHash();
         return false;
     }
     if(p->progressType != TypeProgressEmpty)

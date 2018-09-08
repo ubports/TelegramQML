@@ -34,7 +34,6 @@ void SyncManager::setState(const UpdatesState &state, qint32 channelId)
     updateMutex.lock();
     if (channelId == 0)
     {
-        qWarning() << "Setting global state, seq: " << state.seq();
         this->_globalState = state;
     }
     else
@@ -49,14 +48,12 @@ bool SyncManager::isSynced(const UpdatesState &state, qint32 channelId)
     if (channelId == 0)
     {
         result = (this->_globalState.seq() == state.seq() );
-        qWarning() << "Global state " << (result? "is unchanged" : "has changed");
     }
     else
     {
         if (this->_channelStates.contains(channelId))
         {
             UpdatesState currentState = this->_channelStates[channelId];
-            qWarning() << "Channel " << channelId << " state old seq: " << currentState.seq() << ", new seq: " << state.seq();
             result = (currentState.seq() == state.seq() - 1);
         }
     }

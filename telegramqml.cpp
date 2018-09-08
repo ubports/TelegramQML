@@ -284,7 +284,7 @@ TelegramQml::TelegramQml(QObject *parent) :
     //connect(p->messageRequester, SIGNAL(timeout()), SLOT(requestReadMessage_prv()));
     p->channelPoller = new QTimer(this);
     connect(p->channelPoller, SIGNAL(timeout()), this, SLOT(updatesGetChannelDifference()));
-    p->channelPoller->start(15000);
+    p->channelPoller->start(60000);
 }
 
 QString TelegramQml::phoneNumber() const
@@ -858,7 +858,6 @@ DialogObject *TelegramQml::dialog(qint64 id) const
     DialogObject *res = p->dialogs.value(id);
     if( !res )
     {
-        //qWarning() << "Did not find dialog id: " << id;
         res = p->nullDialog;
     }
     return res;
@@ -869,7 +868,6 @@ MessageObject *TelegramQml::message(qint64 id) const
     MessageObject *res = p->messages.value(id);
     if( !res )
     {
-        //qWarning() << "Did not find message id: " << id;
         res = p->nullMessage;
     }
     return res;
@@ -880,7 +878,6 @@ MessageObject *TelegramQml::message(qint32 id, qint32 peerId) const
     MessageObject *res = p->messages.value(QmlUtils::getUnifiedMessageKey(id, peerId));
     if( !res )
     {
-        //qWarning() << "Did not find message id: " << id << ", peer id: " << peerId;
         res = p->nullMessage;
     }
     return res;
@@ -891,7 +888,6 @@ ChatObject *TelegramQml::chat(qint64 id) const
     ChatObject *res = p->chats.value(id);
     if( !res )
     {
-        //qWarning() << "Did not find chat id: " << id;
         res = p->nullChat;
     }
     return res;
@@ -902,7 +898,6 @@ UserObject *TelegramQml::user(qint64 id) const
     UserObject *res = p->users.value(id);
     if( !res )
     {
-        //qWarning() << "Did not find user id: " << id;
         res = p->nullUser;
     }
     return res;
@@ -1712,7 +1707,7 @@ void TelegramQml::authSignIn(const QString &code, bool retry)
         p->authCheckPhoneRetry = 0;
 
     p->authSignInCode = code;
-    qWarning() << "Trying to sign in: " << code << retry;
+    qWarning() << "Trying to sign in with code" << code << ", try" << retry;
     p->telegram->authSignIn(p->authSignInCode);
 
     p->authNeeded = false;
@@ -1746,7 +1741,7 @@ void TelegramQml::authCheckPassword(const QString &pass)
 
     QByteArray salt = QByteArray::fromHex(p->currentSalt.toUtf8());
     QByteArray passData = salt + pass.toUtf8() + salt;
-    qWarning() << "Trying to check the password: " << salt;
+    qWarning() << "Trying to check the password...";
     p->telegram->authCheckPassword(QCryptographicHash::hash(passData, QCryptographicHash::Sha256));
 }
 
@@ -2460,16 +2455,6 @@ void TelegramQml::getFile(FileLocationObject *l, qint64 type, qint32 fileSize)
 {
     if((!l) || ( !p->telegram ) || (l->accessHash()==0 && l->volumeId()==0 && l->localId()==0) || (l->download()->fileId() != 0))
     {
-        qWarning() << "getFile(): Cannot request a file from the server, bogus data provided:";
-        if (!l)
-            qWarning() << "Invalid location object.";
-        if (!p->telegram)
-            qWarning() << "Invalid telegram object.";
-        if (l && l->accessHash()==0 && l->volumeId()==0 && l->localId()==0)
-            qWarning() << "Access hash, volume Id and local Id all equal 0.";
-        if (l->download()->fileId() != 0)
-            qWarning() << "File already requested for download. MTproto id: " << l->download()->fileId();
-
         return;
     }
     const QString & download_file = fileLocation(l);
@@ -2544,10 +2529,8 @@ void TelegramQml::getFile(FileLocationObject *l, qint64 type, qint32 fileSize)
     else
         qDebug() << __FUNCTION__ << ": Can't detect size of: " << parentObj;
 
-    qWarning() << "uploadGetFile(): trying to get file " << l->localId();
     qint64 fileId = p->telegram->uploadGetFile(input, fileSize, l->dcId(), ekey, eiv);
     p->downloads[fileId] = l;
-    qWarning() << "uploadGetFile(): MTproto id: " << fileId;
     l->download()->setFileId(fileId);
 }
 
@@ -2686,7 +2669,6 @@ void TelegramQml::updatesGetState()
 {
     if(!p->telegram || !p->telegram->isConnected())
     {
-        qWarning() << "updatesGetState cant update, telegram object invalid, or not connected!";
         return;
     }
     p->telegram->updatesGetState();
@@ -2701,6 +2683,42 @@ void TelegramQml::updatesGetDifference()
     p->telegram->updatesGetDifference(currentState.pts(), currentState.date(), currentState.qts());
 }
 
+void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHash)
+{
+    auto currentState = p->syncManager->getState(channelId);
+    if(currentState.pts() == 0)
+    {
+        currentState.setPts(p->dialogs[channelId]->pts());
+        p->syncManager->setState(currentState, channelId);
+    }
+    InputChannel channel(InputChannel::typeInputChannel);
+    channel.setChannelId(channelId);
+    channel.setAccessHash(accessHash);
+    TelegramCore::CallbackError error;
+    TelegramCore::Callback<UpdatesChannelDifference> callback = [this, channelId](TG_UPDATES_GET_CHANNEL_DIFFERENCE_CALLBACK) {
+        if(!error.null)
+            return;
+        if(result.classType() != UpdatesChannelDifference::typeUpdatesChannelDifferenceEmpty)
+        {
+            Q_FOREACH( const Update & u, result.otherUpdates() )
+                insertUpdate(u);
+            Q_FOREACH( const User & u, result.users() )
+                insertUser(u);
+            Q_FOREACH( const Chat & c, result.chats() )
+                insertChat(c);
+            Q_FOREACH( const Message & m, result.newMessages() )
+                insertMessage(m);
+        }
+        auto newState = p->syncManager->getState(channelId);
+        if(newState.pts() != result.pts())
+        {
+            newState.setPts(result.pts());
+            p->syncManager->setState(newState, channelId);
+        }
+    };
+    p->telegram->updatesGetChannelDifference(channel, ChannelMessagesFilter(), currentState.pts(), 50, callback);
+}
+
 void TelegramQml::updatesGetChannelDifference()
 {
     if(!p->telegram || !p->telegram->isConnected())
@@ -2710,17 +2728,7 @@ void TelegramQml::updatesGetChannelDifference()
     {
         if (chat->classType() == Chat::typeChannel && p->dialogs.contains(chat->id()))
         {
-            auto currentState = p->syncManager->getState(chat->id());
-            if(currentState.pts() == 0)
-            {
-                currentState.setPts(p->dialogs[chat->id()]->pts());
-                p->syncManager->setState(currentState, chat->id());
-            }
-            InputChannel channel(InputChannel::typeInputChannel);
-            channel.setChannelId(chat->id());
-            channel.setAccessHash(chat->accessHash());
-            auto msgId = p->telegram->updatesGetChannelDifference(channel, ChannelMessagesFilter(), currentState.pts(), 50);
-            p->pending_channelDiffs[msgId] = chat->id();
+            updatesGetChannelDifference(chat->id(), chat->accessHash());
         }
     }
 
@@ -2997,8 +3005,6 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::updateSecretChatMessage, this, &TelegramQml::updateSecretChatMessage_slt);
     connect( p->telegram, &Telegram::updatesGetDifferenceAnswer, this, &TelegramQml::updatesGetDifference_slt);
     connect( p->telegram, &Telegram::updatesGetDifferenceError, this, &TelegramQml::updatesGetDifference_err);
-
-    connect( p->telegram, &Telegram::updatesGetChannelDifferenceAnswer, this, &TelegramQml::updatesGetChannelDifference_slt);
 
     connect( p->telegram, &Telegram::updatesGetStateAnswer, this, &TelegramQml::updatesGetState_slt);
 
@@ -3707,7 +3713,6 @@ void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &resu
 {
     Q_UNUSED(id)
 
-    qWarning() << "messagesGetHistory_slt: got " << result.messages().count() << " messages.";
     Q_FOREACH( const User & u, result.users() )
         insertUser(u);
     Q_FOREACH( const Chat & c, result.chats() )
@@ -3914,9 +3919,8 @@ void TelegramQml::messagesEncryptedChatDiscarded_slt(qint32 chatId)
     }
 }
 
-void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const EncryptedFile &encryptedFile)
+void TelegramQml::messagesSendEncrypted_slt(qint64 id, const MessagesSentEncryptedMessage &result)
 {
-    Q_UNUSED(encryptedFile)
     if( !p->pend_messages.contains(id) )
         return;
 
@@ -3935,8 +3939,8 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
 
     Message msg(Message::typeMessage);
     msg.setFromId(msgObj->fromId());
-    msg.setId(date);
-    msg.setDate(date);
+    msg.setId(result.date());
+    msg.setDate(result.date());
     msg.setFlags(UNREAD_OUT_TO_FLAG(msgObj->unread(), msgObj->out()));
     msg.setToId(peer);
     msg.setMessage(MessageObject::getMessageWithEntities(msgObj->message(), msgObj->entities()));
@@ -3952,7 +3956,7 @@ void TelegramQml::messagesSendEncrypted_slt(qint64 id, qint32 date, const Encryp
     timerUpdateDialogs(3000);
 }
 
-void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const EncryptedFile &encryptedFile)
+void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, const MessagesSentEncryptedMessage &result)
 {
     MessageObject *msgObj = p->uploads.take(id);
     if(!msgObj)
@@ -3961,9 +3965,9 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     UploadObject *upload = msgObj->upload();
     FileLocation location(FileLocation::typeFileLocation);
     FileLocationObject locationObj(location, msgObj);
-    locationObj.setId(encryptedFile.id());
-    locationObj.setDcId(encryptedFile.dcId());
-    locationObj.setAccessHash(encryptedFile.accessHash());
+    locationObj.setId(result.file().id());
+    locationObj.setDcId(result.file().dcId());
+    locationObj.setAccessHash(result.file().accessHash());
 
     const QString &srcFile = upload->location();
     const QString &dstFile = fileLocation(&locationObj);
@@ -3987,7 +3991,6 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
 
     Dialog dialog;
     dialog.setPeer(peer);
-    //FIXME: Why the date is set as top Message???
     dialog.setTopMessage(msgObj->id());
     dialog.setUnreadCount(0);
 
@@ -4005,9 +4008,9 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
         psize.setSize(QFileInfo(srcFile).size());
 
         Photo photo(Photo::typePhoto);
-        photo.setAccessHash(encryptedFile.accessHash());
-        photo.setId(encryptedFile.id());
-        photo.setDate(date);
+        photo.setAccessHash(result.file().accessHash());
+        photo.setId(result.file().id());
+        photo.setDate(result.date());
         photo.setSizes( QList<PhotoSize>()<<psize );
 
         media.setPhoto(photo);
@@ -4017,11 +4020,11 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     case MessageMedia::typeMessageMediaVideo:
     {
         Video video(Video::typeVideo);
-        video.setAccessHash(encryptedFile.accessHash());
-        video.setId(encryptedFile.id());
-        video.setDate(date);
-        video.setSize(encryptedFile.size());
-        video.setDcId(encryptedFile.dcId());
+        video.setAccessHash(result.file().accessHash());
+        video.setId(result.file().id());
+        video.setDate(result.date());
+        video.setSize(result.file().size());
+        video.setDcId(result.file().dcId());
         video.setW(640);
         video.setH(400);
         media.setVideo(video);
@@ -4031,11 +4034,11 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     case MessageMedia::typeMessageMediaAudio:
     {
         Audio audio(Audio::typeAudio);
-        audio.setAccessHash(encryptedFile.accessHash());
-        audio.setId(encryptedFile.id());
-        audio.setDate(date);
-        audio.setSize(encryptedFile.size());
-        audio.setDcId(encryptedFile.dcId());
+        audio.setAccessHash(result.file().accessHash());
+        audio.setId(result.file().id());
+        audio.setDate(result.date());
+        audio.setSize(result.file().size());
+        audio.setDcId(result.file().dcId());
         media.setAudio(audio);
     }
         break;
@@ -4044,11 +4047,11 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
     case MessageMedia::typeMessageMediaDocument:
     {
         Document document(Document::typeDocument);
-        document.setAccessHash(encryptedFile.accessHash());
-        document.setId(encryptedFile.id());
-        document.setDate(date);
-        document.setSize(encryptedFile.size());
-        document.setDcId(encryptedFile.dcId());
+        document.setAccessHash(result.file().accessHash());
+        document.setId(result.file().id());
+        document.setDate(result.date());
+        document.setSize(result.file().size());
+        document.setDcId(result.file().dcId());
         media.setDocument(document);
     }
         break;
@@ -4056,8 +4059,8 @@ void TelegramQml::messagesSendEncryptedFile_slt(qint64 id, qint32 date, const En
 
     Message msg(Message::typeMessage);
     msg.setFromId(msgObj->fromId());
-    msg.setId(date);
-    msg.setDate(date);
+    msg.setId(result.date());
+    msg.setDate(result.date());
     msg.setFlags(UNREAD_OUT_TO_FLAG(msgObj->unread(), msgObj->out()));
     msg.setMedia(media);
     msg.setToId(peer);
@@ -4281,20 +4284,14 @@ void TelegramQml::updateShort_slt(const Update &update, qint32 date)
 void TelegramQml::checkUpdateSyncState(qint32 seq, qint32 date)
 {
     auto currentState = p->syncManager->getState();
-    if (currentState.seq() == seq)
+    if(currentState.seq() + 1 == seq)
     {
-         qWarning() << "checkUpdateSyncState detected no change in seq";
-    }
-    else if(currentState.seq() + 1 == seq)
-    {
-        qWarning() << "checkUpdateSyncState updating seq " << currentState.seq() << " => " << seq;
         currentState.setSeq(seq);
         currentState.setDate(date);
         p->syncManager->setState(currentState);
     }
     else
     {
-        qWarning() << "checkUpdateSyncState detected seq gap " << currentState.seq() << " => " << seq;
         p->syncManager->requestSync();
     }
 }
@@ -4358,41 +4355,7 @@ void TelegramQml::updatesGetDifference_slt(qint64 id, const QList<Message> &mess
     p->syncManager->setState(state);
     if (isIntermediateState)
     {
-        qWarning() << "updatesGetDifference_slt: intermediate state, continuing to query at seq: " << state.seq();
         p->syncManager->requestSync();
-    }
-    else
-    {
-        qWarning() << "updatesGetDifference_slt: finished sync at seq: " << state.seq();
-    }
-
-}
-
-void TelegramQml::updatesGetChannelDifference_slt(qint64 msgId, const UpdatesChannelDifference &result)
-{
-
-    if(result.classType() != UpdatesChannelDifference::typeUpdatesChannelDifferenceEmpty)
-    {
-        Q_FOREACH( const Update & u, result.otherUpdates() )
-            insertUpdate(u);
-        Q_FOREACH( const User & u, result.users() )
-            insertUser(u);
-        Q_FOREACH( const Chat & c, result.chats() )
-            insertChat(c);
-        Q_FOREACH( const Message & m, result.newMessages() )
-            insertMessage(m);
-    }
-    if(p->pending_channelDiffs.contains(msgId))
-    {
-        qint32 channelId = p->pending_channelDiffs[msgId];
-        p->pending_channelDiffs.remove(msgId);
-        auto newState = p->syncManager->getState(channelId);
-        if(newState.pts() != result.pts())
-        {
-            qWarning() << "updatesGetChannelDifference_slt: old pts: " << newState.pts() << ", new pts: " << result.pts() << " for channel " << channelId;
-            newState.setPts(result.pts());
-            p->syncManager->setState(newState, channelId);
-        }
     }
 }
 
@@ -4412,16 +4375,13 @@ void TelegramQml::updatesGetState_slt(qint64 msgId, const UpdatesState &result)
 {
     Q_UNUSED(msgId)
 
-    qWarning() << "Pts: " << result.pts();
     if (!p->syncManager->getState().date())
     {
-        qWarning() << "global state empty, initializing with seq=" << result.seq();
         p->syncManager->setState(result);;
         return;
     }
     if(!p->syncManager->isSynced(result))
     {
-        qWarning() << "updatesGetState_slt: not synced";
         p->syncManager->requestSync();
     }
 }
@@ -4434,7 +4394,6 @@ void TelegramQml::updatesGetState_err(qint64 msgId, qint32 errorCode, const QStr
 
 void TelegramQml::uploadGetFile_slt(qint64 id, const StorageFileType &type, qint32 mtime, const QByteArray & bytes, qint32 partId, qint32 downloaded, qint32 total)
 {
-    qWarning() << "uploadGetFileAnswer(): received chunk for id: " << id;
     FileLocationObject *obj = p->downloads.value(id);
     if( !obj )
         return;
@@ -4456,7 +4415,6 @@ void TelegramQml::uploadGetFile_slt(qint64 id, const StorageFileType &type, qint
     if( !download->file()->isOpen() )
     {
         download->file()->open();
-        qWarning() << "Opened temporary file" << download->file()->fileName();
     }
     download->file()->write(bytes);
 
@@ -4465,7 +4423,6 @@ void TelegramQml::uploadGetFile_slt(qint64 id, const StorageFileType &type, qint
         const QString & download_file = fileLocation(obj);
         download->file()->flush();
         download->file()->close();
-        qWarning() << "Copying temporary file" << download->file()->fileName() << "to final file" << download_file;
         if (!download->file()->copy(download_file))
             return;
 
@@ -4543,7 +4500,6 @@ void TelegramQml::onConnectedChanged()
 {
     if (p->telegram->isConnected() && p->authLoggedIn )
     {
-        qWarning() << "onConnectedChanged: connected, qerying state";
         QThread::msleep(1500);
         updatesGetState();
         p->telegram->channelsGetDialogs(0, 1000);
@@ -4614,7 +4570,7 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
         m.setMessage(plainText);
         m.setEntities(entities);
     }
-    m.setMessage(MessageObject::getMessageWithEntities(m.message(), m.entities()));
+    m.setMessage(MessageObject::getMessageWithEntities(m.message().toHtmlEscaped(), m.entities()));
 
     auto unifiedId = QmlUtils::getUnifiedMessageKey(m.id(), m.toId().channelId());
     auto replyToUnifiedId = QmlUtils::getUnifiedMessageKey(m.replyToMsgId(), m.toId().channelId());
@@ -4927,7 +4883,6 @@ void TelegramQml::insertUpdate(const Update &update)
         msg.setMessage(msgObj->message());
         msg.setReplyToMsgId(msgObj->replyToMsgId());
         insertToGarbeges(p->messages.value(old_msgId));
-        qWarning() << "Inserting sent channel message " << msg.id();
         insertMessage(msg);
         //timerUpdateDialogs(3000);
     }
@@ -5124,29 +5079,43 @@ void TelegramQml::insertUpdate(const Update &update)
         const qint64 maxId = update.maxId();
         const qint64 dId = update.channelId()? update.channelId() : update.peer().chatId()? update.peer().chatId() : update.peer().userId();
         const QList<qint64> &msgs = p->messages_list.value(dId);
+        qWarning() << "Debug ReadHistory" << maxId << dId << msgs.count();
         Q_FOREACH(qint64 msg, msgs)
             if(msg <= QmlUtils::getUnifiedMessageKey(maxId, dId))
             {
                 MessageObject *obj = p->messages.value(msg);
                 if(obj)
                 {
+                    qWarning() << "Setting message to read" << msg;
                     obj->setUnread(false);
                 }
             }
     }
         break;
 
-    //TODO: Currently ignored Updates, should be eventually implemented?
-    case Update::typeUpdateReadChannelInbox:
-    case Update::typeUpdateContactLink:
-    case Update::typeUpdateWebPage:
+    //Unused or handled elsewhere
     case Update::typeUpdateEncryption:
-    case Update::typeUpdateNewAuthorization:
-    case Update::typeUpdateDcOptions:
         break;
-
+    //TODO: Currently ignored Updates, should be eventually implemented?
+    case Update::typeUpdateReadHistoryInbox:
+        qWarning() << "Received unhandled updates type: typeUpdateReadHistoryInbox";
+        break;
+    case Update::typeUpdateReadChannelInbox:
+        qWarning() << "Received unhandled updates type: typeUpdateReadChannelInbox";
+        break;
+    case Update::typeUpdateContactLink:
+        qWarning() << "Received unhandled updates type: typeUpdateContactLink";
+        break;
+    case Update::typeUpdateWebPage:
+        qWarning() << "Received unhandled updates type: typeUpdateWebPage";
+        break;
+    case Update::typeUpdateNewAuthorization:
+        qWarning() << "Received unhandled updates type: typeUpdateNewAuthorization";
+        break;
+    case Update::typeUpdateDcOptions:
+        qWarning() << "Received unhandled updates type: typeUpdateDcOptions";
+        break;
     default:
-
         qWarning() << "Received unhandled updates type: " << update.classType();
         break;
     }
