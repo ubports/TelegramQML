@@ -657,7 +657,6 @@ void DatabaseCore::readChats()
         chat.setTitle( record.value("title").toString() );
         chat.setParticipantsCount( record.value("participantsCount").toLongLong() );
         chat.setDate( record.value("date").toLongLong() );
-        chat.setParticipantsCount( record.value("participantsCount").toLongLong() );
         chat.setLeft( record.value("left").toBool() );
         chat.setMegagroup(record.value("megagroup").toBool());
         chat.setClassType( static_cast<Chat::ChatClassType>(record.value("type").toLongLong()) );

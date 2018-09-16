@@ -3953,6 +3953,26 @@ public:
         Q_EMIT changed();
     }
 
+    bool hasLoadedParticipant() const {
+        return _hasLoadedParticipant;
+    }
+
+    void setHasLoadedParticipant(bool value) {
+        if( value == _hasLoadedParticipant )
+            return;
+        _hasLoadedParticipant = value;
+    }
+
+    bool hasLoadedParticipantsCount() const {
+        return _hasLoadedParticipantsCount;
+    }
+
+    void setHasLoadedParticipantsCount(bool value) {
+        if( value == _hasLoadedParticipantsCount )
+            return;
+        _hasLoadedParticipantsCount = value;
+    }
+
     quint32 classType() const {
         return _classType;
     }
@@ -4019,6 +4039,8 @@ private:
     bool _isCreator;
     bool _isModerator;
     bool _isEditor;
+    bool _hasLoadedParticipant = true;
+    bool _hasLoadedParticipantsCount = true;
     quint32 _classType;
 
 };
@@ -4032,6 +4054,7 @@ class TELEGRAMQMLSHARED_EXPORT DialogObject : public TqObject
     Q_PROPERTY(PeerNotifySettingsObject* notifySettings READ notifySettings WRITE setNotifySettings NOTIFY notifySettingsChanged)
     Q_PROPERTY(qint32 topMessage READ topMessage WRITE setTopMessage NOTIFY topMessageChanged)
     Q_PROPERTY(qint32 unreadCount READ unreadCount WRITE setUnreadCount NOTIFY unreadCountChanged)
+    Q_PROPERTY(qint32 readInboxMaxId READ readInboxMaxId WRITE setReadInboxMaxId NOTIFY readInboxMaxIdChanged)
     Q_PROPERTY(bool encrypted READ encrypted WRITE setEncrypted NOTIFY encryptedChanged)
     Q_PROPERTY(QStringList typingUsers READ typingUsers WRITE setTypingUsers NOTIFY typingUsersChanged)
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
@@ -4044,6 +4067,7 @@ public:
         _notifySettings = new PeerNotifySettingsObject(another.notifySettings(), this);
         _topMessage = another.topMessage();
         _unreadCount = another.unreadCount();
+        _readInboxMaxId = another.readInboxMaxId();
         _encrypted = false;
         _classType = another.classType();
         _pts = another.pts();
@@ -4100,6 +4124,18 @@ public:
             return;
         _unreadCount = value;
         Q_EMIT unreadCountChanged();
+        Q_EMIT changed();
+    }
+
+    qint32 readInboxMaxId() const {
+        return _readInboxMaxId;
+    }
+
+    void setReadInboxMaxId(qint32 value) {
+        if( value == _readInboxMaxId )
+            return;
+        _readInboxMaxId = value;
+        Q_EMIT readInboxMaxIdChanged();
         Q_EMIT changed();
     }
 
@@ -4160,6 +4196,8 @@ public:
         Q_EMIT topMessageChanged();
         _unreadCount = another.unreadCount();
         Q_EMIT unreadCountChanged();
+        _readInboxMaxId = another.readInboxMaxId();
+        Q_EMIT readInboxMaxIdChanged();
         _typingUsers.clear();
         Q_EMIT typingUsersChanged();
         _classType = another.classType();
@@ -4175,6 +4213,7 @@ Q_SIGNALS:
     void notifySettingsChanged();
     void topMessageChanged();
     void unreadCountChanged();
+    void readInboxMaxIdChanged();
     void encryptedChanged();
     void typingUsersChanged();
     void classTypeChanged();
@@ -4185,6 +4224,7 @@ private:
     PeerNotifySettingsObject* _notifySettings;
     qint64 _topMessage;
     qint32 _unreadCount;
+    qint32 _readInboxMaxId;
     bool _encrypted;
     QStringList _typingUsers;
     quint32 _classType;

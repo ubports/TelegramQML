@@ -556,7 +556,8 @@ private Q_SLOTS:
     void messagesUninstallStickerSet_slt(qint64 msgId, bool ok);
 
     void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
-
+    void removeDialogsLock();
+    void removeChannelsLock();
     void channelsGetDialogs_slt(qint64 id, const MessagesDialogs &result);
 
     void updatesTooLong_slt();
@@ -599,6 +600,8 @@ private:
     void blockUser(qint64 userId);
     void unblockUser(qint64 userId);
 
+    void setReadFlag(qint32 dId, const qint32 maxId, const Peer &peer);
+
     QString fileLocation_old( FileLocationObject *location );
     QString fileLocation_old2( FileLocationObject *location );
 
@@ -608,6 +611,7 @@ private:
 
     QMutex getDialogsLock;
     QMutex getMessagesLock;
+    QMutex getChannelsLock;
 
 protected:
     void timerEvent(QTimerEvent *e);

@@ -30,6 +30,7 @@
 #include <telegram.h>
 
 #include <limits>
+#include <future>
 
 #include <QPointer>
 #include <QTimerEvent>
@@ -208,6 +209,11 @@ public:
     SyncManager *syncManager;
     QTimer *channelPoller;
 
+    qint32 dialogSliceOffset;
+    QSet<qint64> deletedDialogs;
+
+    qint32 channelSliceOffset;
+    QSet<qint64> deletedChannels;
 };
 
 TelegramQml::TelegramQml(QObject *parent) :
@@ -284,7 +290,7 @@ TelegramQml::TelegramQml(QObject *parent) :
     //connect(p->messageRequester, SIGNAL(timeout()), SLOT(requestReadMessage_prv()));
     p->channelPoller = new QTimer(this);
     connect(p->channelPoller, SIGNAL(timeout()), this, SLOT(updatesGetChannelDifference()));
-    p->channelPoller->start(60000);
+    p->channelPoller->start(15000);
 }
 
 QString TelegramQml::phoneNumber() const
@@ -818,8 +824,6 @@ void TelegramQml::channelsJoinChannel(QString url)
     {
         QString username = url.split("/")[(url.split("/").length())-1];
         qint64 msgId;
-        ContactsResolvedPeer result;
-        TelegramCore::CallbackError error;
         TelegramCore::Callback<ContactsResolvedPeer> callback = [this](TG_CONTACTS_RESOLVE_USERNAME_CALLBACK) {
             if(!error.null) {
                 onServerError(msgId, error.errorCode, error.errorText);
@@ -2685,6 +2689,9 @@ void TelegramQml::updatesGetDifference()
 
 void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHash)
 {
+    if(!p->telegram || !p->telegram->isConnected())
+        return;
+
     auto currentState = p->syncManager->getState(channelId);
     if(currentState.pts() == 0)
     {
@@ -2694,10 +2701,11 @@ void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHas
     InputChannel channel(InputChannel::typeInputChannel);
     channel.setChannelId(channelId);
     channel.setAccessHash(accessHash);
-    TelegramCore::CallbackError error;
-    TelegramCore::Callback<UpdatesChannelDifference> callback = [this, channelId](TG_UPDATES_GET_CHANNEL_DIFFERENCE_CALLBACK) {
-        if(!error.null)
+    TelegramCore::Callback<UpdatesChannelDifference> callback = [this, channelId, accessHash](TG_UPDATES_GET_CHANNEL_DIFFERENCE_CALLBACK) {
+        if(!error.null) {
+            onServerError(msgId, error.errorCode, error.errorText);
             return;
+        }
         if(result.classType() != UpdatesChannelDifference::typeUpdatesChannelDifferenceEmpty)
         {
             Q_FOREACH( const Update & u, result.otherUpdates() )
@@ -2714,6 +2722,11 @@ void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHas
         {
             newState.setPts(result.pts());
             p->syncManager->setState(newState, channelId);
+        }
+        if(result.classType() == UpdatesChannelDifference::typeUpdatesChannelDifferenceTooLong)
+        {
+            qWarning() << "More than 50 channel updates received, calling recursively...";
+            updatesGetChannelDifference(channelId, accessHash);
         }
     };
     p->telegram->updatesGetChannelDifference(channel, ChannelMessagesFilter(), currentState.pts(), 50, callback);
@@ -2935,6 +2948,8 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::error, this, &TelegramQml::error_slt);
     connect( p->telegram, &Telegram::connected, this, &TelegramQml::connectedChanged);
     connect( p->telegram, &Telegram::connected, this, &TelegramQml::onConnectedChanged);
+    connect( p->telegram, &Telegram::authLoggedIn, this, &TelegramQml::onConnectedChanged);
+
 
     connect( p->telegram, &Telegram::disconnected, this, &TelegramQml::connectedChanged);
     connect( p->telegram, &Telegram::authCheckPasswordAnswer, this, &TelegramQml::authCheckPassword_slt);
@@ -3068,6 +3083,7 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::channelsEditTitleError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsExportInviteError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsGetChannelsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::channelsGetChannelsError, this, &TelegramQml::removeChannelsLock);
     connect( p->telegram, &Telegram::channelsGetDialogsError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsGetFullChannelError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsGetImportantHistoryError, this, &TelegramQml::onServerError);
@@ -3120,6 +3136,7 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::messagesGetChatsError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::messagesGetDhConfigError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::messagesGetDialogsError, this, &TelegramQml::onServerError);
+    connect( p->telegram, &Telegram::messagesGetDialogsError, this, &TelegramQml::removeDialogsLock);
     connect( p->telegram, &Telegram::messagesGetFullChatError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::messagesGetHistoryError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::messagesGetMessagesError, this, &TelegramQml::onServerError);
@@ -3331,8 +3348,19 @@ void TelegramQml::authSignInError_slt(qint64 id, qint32 errorCode, QString error
 
 void TelegramQml::onServerError(qint64 msgId, qint32 errorCode, const QString &errorText)
 {
-    qWarning() << __FUNCTION__ << "msg: " << msgId << ": " << errorCode << ": " << errorText;
+    qWarning() << __FUNCTION__ << "msg: " << msgId << errorCode << errorText;
 }
+
+void TelegramQml::removeDialogsLock()
+{
+    getDialogsLock.unlock();
+}
+
+void TelegramQml::removeChannelsLock()
+{
+    getChannelsLock.unlock();
+}
+
 
 void TelegramQml::authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText)
 {
@@ -3351,8 +3379,6 @@ void TelegramQml::authSignUpError_slt(qint64 id, qint32 errorCode, QString error
 
 void TelegramQml::error_slt(qint64 id, qint32 errorCode, QString errorText, QString functionName)
 {
-    Q_UNUSED(id)
-    Q_UNUSED(errorCode)
 
     p->error = errorText;
     Q_EMIT errorChanged();
@@ -3365,8 +3391,7 @@ void TelegramQml::error_slt(qint64 id, qint32 errorCode, QString errorText, QStr
         messagesDeleteHistory_slt(id, MessagesAffectedHistory());
     }
 
-    qWarning() << __FUNCTION__ << errorCode << errorText << functionName;
-
+    qWarning() << __FUNCTION__ << "msg: " << id << errorCode << errorText << functionName;
     Q_EMIT errorSignal(id, errorCode, errorText, functionName);
 }
 
@@ -3498,6 +3523,7 @@ void TelegramQml::usersGetUsers_slt(qint64 id, const QList<User> &users)
 
 void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
 {
+
     if(result.classType() == UpdatesType::typeUpdateShortSentMessage)
     {
         if( !p->pend_messages.contains(id) )
@@ -3506,23 +3532,24 @@ void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
         qint64 old_msgId = msgObj->unifiedId();
         msgObj->setSent(true);
         Peer peer(static_cast<Peer::PeerClassType>(msgObj->toId()->classType()));
-        if (peer.classType() == Peer::typePeerChat)
-            peer.setChatId(msgObj->toId()->chatId());
-        else if (peer.classType() == Peer::typePeerChannel)
-            peer.setChannelId(msgObj->toId()->channelId());
-        else
-            peer.setUserId(msgObj->toId()->userId());
+        peer.setChatId(msgObj->toId()->chatId());
+        peer.setUserId(msgObj->toId()->userId());
+        peer.setChannelId(msgObj->toId()->channelId());
+        auto unifiedId = QmlUtils::getUnifiedMessageKey(result.id(), msgObj->toId()->channelId());
         Message msg(Message::typeMessage);
         msg.setFromId(msgObj->fromId());
         msg.setId(result.id());
         msg.setDate(result.date());
         msg.setFlags(UNREAD_OUT_TO_FLAG(msgObj->unread(), msgObj->out()));
         msg.setToId(peer);
+        msg.setMessage(msgObj->message());
         msg.setReplyToMsgId(msgObj->replyToMsgId());
         msg.setMedia(result.media());
+
         insertToGarbeges(p->messages.value(old_msgId));
-        auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
+        insertMessage(msg);
         Q_EMIT messageSent(id, p->messages.value(unifiedId));
+
     }
     else
     {
@@ -3624,7 +3651,6 @@ void TelegramQml::messagesForwardDocument_slt(qint64 id, const UpdatesType &upda
 void TelegramQml::channelsGetDialogs_slt(qint64 id, const MessagesDialogs &result)
 {
     Q_UNUSED(id)
-    getDialogsLock.lock();
     Q_FOREACH( const User & u, result.users() )
         insertUser(u);
     Q_FOREACH( const Chat & c, result.chats() )
@@ -3632,43 +3658,45 @@ void TelegramQml::channelsGetDialogs_slt(qint64 id, const MessagesDialogs &resul
     Q_FOREACH( const Message & m, result.messages() )
         insertMessage(m);
 
-    //Initialize a list of all existing dialogs to check if one or more were deleted
-    //This is kind of reverse logic!
-    QSet<qint64> deletedChannels;
-    for (QHash<qint64, DialogObject*>::iterator it = p->dialogs.begin(); it != p->dialogs.end(); ++it)
-    {
-        if(it.value()->classType() == Dialog::typeDialogChannel)
-            deletedChannels.insert(it.key());
-    }
-
     Q_FOREACH( const Dialog & d, result.dialogs() )
     {
         insertDialog(d);
         qint64 dialogId = d.peer().channelId()? d.peer().channelId() : d.peer().chatId()? d.peer().chatId() : d.peer().userId();
         //Remove this dialog from deleted dialogs, it is still valid
-        deletedChannels.remove(dialogId);
+        p->deletedChannels.remove(dialogId);
     }
 
-    //The remaining dialogs in deletedDialogs can now be safely deleted also locally
-    if(p->database) {
-        Q_FOREACH(qint64 dId, deletedChannels)
-        {
-            if(p->dialogs[dId]->encrypted())
-                continue;
-
-            p->database->deleteDialog(dId);
-            insertToGarbeges(p->dialogs.value(dId));
-        }
-    }
-    getDialogsLock.unlock();
     Q_EMIT dialogsChanged(false);
+    if(result.classType() == MessagesDialogs::typeMessagesDialogsSlice && result.count() > p->channelSliceOffset)
+    {
+        if (result.count() <= p->channelSliceOffset)
+        {
+            qWarning() << "channelsGetDialogs_slt: Finished slices";
+            p->channelSliceOffset = 0;
+            //The remaining dialogs in deletedDialogs can now be safely deleted also locally
+            if(p->database) {
+                Q_FOREACH(qint64 dId, p->deletedChannels)
+                {
+                    if(p->dialogs[dId]->encrypted())
+                        continue;
+
+                    p->database->deleteDialog(dId);
+                    insertToGarbeges(p->dialogs.value(dId));
+                }
+            }
+            getChannelsLock.unlock();
+            return;
+        }
+        qWarning() << "channelsGetDialogs_slt: Channels slice detected, continuing query";
+        p->channelSliceOffset += 200;
+        p->telegram->channelsGetDialogs(p->channelSliceOffset, 200);
+    }
 }
 
 void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &result)
 {
     Q_UNUSED(id)
 
-    getDialogsLock.lock();
     Q_FOREACH( const User & u, result.users() )
         insertUser(u);
     Q_FOREACH( const Chat & c, result.chats() )
@@ -3676,37 +3704,40 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &resul
     Q_FOREACH( const Message & m, result.messages() )
         insertMessage(m);
 
-    //Initialize a list of all existing dialogs to check if one or more were deleted
-    //This is kind of reverse logic!
-    QSet<qint64> deletedDialogs;
-    for (QHash<qint64, DialogObject*>::iterator it = p->dialogs.begin(); it != p->dialogs.end(); ++it)
-    {
-        if(it.value()->classType() == Dialog::typeDialog)
-            deletedDialogs.insert(it.key());
-    }
-
     Q_FOREACH( const Dialog & d, result.dialogs() )
     {
         insertDialog(d);
         qint64 dialogId = d.peer().channelId()? d.peer().channelId() : d.peer().chatId()? d.peer().chatId() : d.peer().userId();
         //Remove this dialog from deleted dialogs, it is still valid
-        deletedDialogs.remove(dialogId);
+        p->deletedDialogs.remove(dialogId);
     }
 
-    //The remaining dialogs in deletedDialogs can now be safely deleted also locally
-    if(p->database) {
-        Q_FOREACH(qint64 dId, deletedDialogs)
-        {
-            if(p->dialogs[dId]->encrypted())
-                continue;
-
-            p->database->deleteDialog(dId);
-            insertToGarbeges(p->dialogs.value(dId));
-        }
-    }
-    getDialogsLock.unlock();
     Q_EMIT dialogsChanged(false);
     refreshSecretChats();
+    if(result.classType() == MessagesDialogs::typeMessagesDialogsSlice)
+    {
+        if (result.count() <= p->dialogSliceOffset)
+        {
+            qWarning() << "messagesGetDialogs_slt: Finished slices";
+            p->dialogSliceOffset = 0;
+            //The remaining dialogs in deletedDialogs can now be safely deleted also locally
+            if(p->database) {
+                Q_FOREACH(qint64 dId, p->deletedDialogs)
+                {
+                    if(p->dialogs[dId]->encrypted())
+                        continue;
+
+                    p->database->deleteDialog(dId);
+                    insertToGarbeges(p->dialogs.value(dId));
+                }
+            }
+            getDialogsLock.unlock();
+            return;
+        }
+        qWarning() << "messagesGetDialogs_slt: Dialogs slice detected, continuing query";
+        p->dialogSliceOffset += 200;
+        p->telegram->messagesGetDialogs(p->dialogSliceOffset, 200);
+    }
 }
 
 void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &result)
@@ -4199,7 +4230,6 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
     requestReadMessage(id);
 
     auto unifiedId = QmlUtils::getUnifiedMessageKey(msg.id(), msg.toId().channelId());
-    //insertMessage(msg);
     if( p->dialogs.contains(userId) )
     {
         DialogObject *dlg_o = p->dialogs.value(userId);
@@ -4502,7 +4532,21 @@ void TelegramQml::onConnectedChanged()
     {
         QThread::msleep(1500);
         updatesGetState();
-        p->telegram->channelsGetDialogs(0, 1000);
+        if (getDialogsLock.tryLock())
+        {
+            qWarning() << "Starting getMessageDialogs at offset 0";
+            p->telegram->messagesGetDialogs(0, 200);
+
+        }
+        else
+            qWarning() << "getMessageDialogs still in progress, dont call too often!";
+        if (getChannelsLock.tryLock())
+        {
+            qWarning() << "Starting getChannelDialogs at offset 0";
+            p->telegram->channelsGetDialogs(0, 200);
+        }
+        else
+            qWarning() << "getChannelDialogs still in progress, dont call too often!";
         updatesGetChannelDifference();
     }
 }
@@ -4550,11 +4594,16 @@ void TelegramQml::insertDialog(const Dialog &d, bool encrypted, bool fromDb)
     refreshUnreadCount();
 
     if(!fromDb)
+    {
         p->database->insertDialog(d, encrypted);
+        setReadFlag(did, d.readInboxMaxId(), d.peer());
+    }
 }
 
 void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool fromDb, bool tempMsg)
 {
+    QElapsedTimer timer;
+    timer.start();
     if (newMsg.message().isEmpty()
             && newMsg.action().classType() == MessageAction::typeMessageActionEmpty
             && newMsg.media().classType() == MessageMedia::typeMessageMediaEmpty) {
@@ -4562,6 +4611,22 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
     }
 
     Message m = newMsg;
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(m.id(), m.toId().channelId());
+
+    //Deprecated function in the Telegram server makes this necessary:
+    if(!fromDb)
+    {
+        if (tempMsg)
+            m.setUnread(true);
+        else
+        {
+            qint64 dialogId = m.toId().channelId()? m.toId().channelId() : m.toId().chatId()? m.toId().chatId() : m.toId().userId();
+            auto result = p->dialogs.value(dialogId);
+            if(result)
+                m.setUnread(m.id() > result->readInboxMaxId());
+        }
+    }
+
     if(m.entities().count() == 0)
     {
         QString plainText;
@@ -4570,9 +4635,8 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
         m.setMessage(plainText);
         m.setEntities(entities);
     }
-    m.setMessage(MessageObject::getMessageWithEntities(m.message().toHtmlEscaped(), m.entities()));
+    m.setMessage(MessageObject::getMessageWithEntities(m.message(), m.entities()));
 
-    auto unifiedId = QmlUtils::getUnifiedMessageKey(m.id(), m.toId().channelId());
     auto replyToUnifiedId = QmlUtils::getUnifiedMessageKey(m.replyToMsgId(), m.toId().channelId());
 
     if(m.replyToMsgId() && !p->messages.contains(replyToUnifiedId))
@@ -4601,20 +4665,26 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
             did = m.toId().channelId();
         if( !did )
             did = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
-
         p->messages.insert(unifiedId, currentMsg);
 
         QList<qint64> list = p->messages_list.value(did);
 
         list << unifiedId;
 
-        telegramp_qml_tmp = p;
-        std::stable_sort( list.begin(), list.end(), checkMessageLessThan );
+        if(!tempMsg)
+        {
+            telegramp_qml_tmp = p;
+            std::stable_sort( list.begin(), list.end(), checkMessageLessThan );
+        }
 
         p->messages_list[did] = list;
     }
     else if(fromDb && !encrypted)
+    {
+        currentMsg->setUnread(m.unread());
         return;
+    }
+
     else
     {
         //Test if we got this message already. Should speed up loading etc.
@@ -4668,8 +4738,6 @@ void TelegramQml::insertUser(const User &newUser, bool fromDb)
         userObj = new UserObject(newUser, this);
         p->users.insert(newUser.id(), userObj);
 
-//        getFile(obj->photo()->photoSmall());
-
         QStringList userNameKeys;
         if(!newUser.username().isEmpty())
         {
@@ -4702,33 +4770,38 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
 {
     ChatObject *obj = p->chats.value(c.id());
     Chat tempChat = c;
-
+    qint32 participantsCount = 0;
     if( !obj )
     {
         obj = new ChatObject(tempChat, this);
         p->chats.insert(tempChat.id(), obj);
     }
-    else
-    if(fromDb)
+    else if(fromDb)
         return;
     else
-        *obj = tempChat;
-
-    //Check for user privileges in this chat or channel
-    if (tempChat.classType() == Chat::typeChannel && !tempChat.megagroup())
     {
+        participantsCount = obj->participantsCount();
+        *obj = tempChat;
+        if(obj->participantsCount() == 0)
+            obj->setParticipantsCount(participantsCount);
+    }
+    //Check for additional channel properties
+    if (tempChat.classType() == Chat::typeChannel && participantsCount == 0)
+    {
+        qWarning() << "Getting channel info for channel" << c.title();
         InputChannel channel(InputChannel::typeInputChannel);
         channel.setChannelId(c.id());
         channel.setAccessHash(c.accessHash());
         InputUser user(InputUser::typeInputUserSelf);
         user.setUserId(me());
-        TelegramCore::CallbackError error;
-        TelegramCore::Callback<ChannelsChannelParticipant> callback = [this, obj](TG_CHANNELS_GET_PARTICIPANT_CALLBACK) {
+        TelegramCore::Callback<ChannelsChannelParticipant> callback1 = [this, obj](TG_CHANNELS_GET_PARTICIPANT_CALLBACK) {
             obj->setIsCreator(false);
             obj->setIsEditor(false);
             obj->setIsModerator(false);
             if(!error.null)
+            {
                 return;
+            }
             switch( static_cast<int>(result.participant().classType())) {
                 case ChannelParticipant::typeChannelParticipantCreator:
                     obj->setIsCreator(true);
@@ -4741,17 +4814,21 @@ void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFul
                 break;
             }
         };
-        p->telegram->channelsGetParticipant(channel, user, callback);
-
+        p->telegram->channelsGetParticipant(channel, user, callback1);
+        TelegramCore::Callback<MessagesChatFull> callback2 = [this, obj](TG_CHANNELS_GET_FULL_CHANNEL_CALLBACK) {
+            if(!error.null)
+            {
+                return;
+            }
+            obj->setParticipantsCount(result.fullChat().participantsCount());
+        };
+        p->telegram->channelsGetFullChannel(channel, callback2);
     }
-    else
-    {
-
-    }
-
     if(!fromDb)
+    {
+        tempChat.setParticipantsCount(obj->participantsCount());
         p->database->insertChat(tempChat);
-
+    }
     Q_EMIT chatsChanged();
 }
 
@@ -4812,7 +4889,7 @@ void TelegramQml::insertUpdates(const UpdatesType &updates)
         insertUpdate(u);
 
     insertUpdate(updates.update());
-    //timerUpdateDialogs(500);
+    timerUpdateDialogs(3000);
 }
 
 void TelegramQml::insertUpdate(const Update &update)
@@ -4884,7 +4961,7 @@ void TelegramQml::insertUpdate(const Update &update)
         msg.setReplyToMsgId(msgObj->replyToMsgId());
         insertToGarbeges(p->messages.value(old_msgId));
         insertMessage(msg);
-        //timerUpdateDialogs(3000);
+        timerUpdateDialogs(3000);
     }
         break;
 
@@ -4939,7 +5016,7 @@ void TelegramQml::insertUpdate(const Update &update)
 
     case Update::typeUpdateNewChannelMessage:
     case Update::typeUpdateNewMessage:
-        insertMessage(update.message(), false, false, true);
+        insertMessage(update.message());
         timerUpdateDialogs(3000);
         Q_EMIT messagesReceived(1);
         break;
@@ -5076,49 +5153,50 @@ void TelegramQml::insertUpdate(const Update &update)
 
     case Update::typeUpdateReadHistoryOutbox:
     {
-        const qint64 maxId = update.maxId();
         const qint64 dId = update.channelId()? update.channelId() : update.peer().chatId()? update.peer().chatId() : update.peer().userId();
-        const QList<qint64> &msgs = p->messages_list.value(dId);
-        qWarning() << "Debug ReadHistory" << maxId << dId << msgs.count();
-        Q_FOREACH(qint64 msg, msgs)
-            if(msg <= QmlUtils::getUnifiedMessageKey(maxId, dId))
-            {
-                MessageObject *obj = p->messages.value(msg);
-                if(obj)
-                {
-                    qWarning() << "Setting message to read" << msg;
-                    obj->setUnread(false);
-                }
-            }
+        setReadFlag(dId, update.maxId(), update.peer());
     }
         break;
 
     //Unused or handled elsewhere
+    case Update::typeUpdateReadHistoryInbox:
+    case Update::typeUpdateReadChannelInbox:
     case Update::typeUpdateEncryption:
         break;
+
     //TODO: Currently ignored Updates, should be eventually implemented?
-    case Update::typeUpdateReadHistoryInbox:
-        qWarning() << "Received unhandled updates type: typeUpdateReadHistoryInbox";
-        break;
-    case Update::typeUpdateReadChannelInbox:
-        qWarning() << "Received unhandled updates type: typeUpdateReadChannelInbox";
-        break;
     case Update::typeUpdateContactLink:
-        qWarning() << "Received unhandled updates type: typeUpdateContactLink";
+        qWarning() << "Received unhandled updates type: typeUpdateContactLink" << update.toMap();
         break;
     case Update::typeUpdateWebPage:
-        qWarning() << "Received unhandled updates type: typeUpdateWebPage";
+        qWarning() << "Received unhandled updates type: typeUpdateWebPage" << update.toMap();
         break;
     case Update::typeUpdateNewAuthorization:
-        qWarning() << "Received unhandled updates type: typeUpdateNewAuthorization";
+        qWarning() << "Received unhandled updates type: typeUpdateNewAuthorization" << update.toMap();
         break;
     case Update::typeUpdateDcOptions:
-        qWarning() << "Received unhandled updates type: typeUpdateDcOptions";
+        qWarning() << "Received unhandled updates type: typeUpdateDcOptions" << update.toMap();
         break;
     default:
-        qWarning() << "Received unhandled updates type: " << update.classType();
+        qWarning() << "Received unhandled updates type: " << update.classType()  << update.toMap();
         break;
     }
+}
+
+void TelegramQml::setReadFlag(qint32 dId, const qint32 maxId, const Peer &peer)
+{
+    const QList<qint64> &msgs = p->messages_list.value(dId);
+    auto unifiedId = QmlUtils::getUnifiedMessageKey(maxId, peer.channelId());
+    Q_FOREACH(qint64 msg, msgs)
+        if(msg <= unifiedId)
+        {
+            MessageObject *obj = p->messages.value(msg);
+            if(obj && obj->out())
+            {
+                obj->setUnread(false);
+            }
+        }
+    p->database->markMessagesAsRead(maxId, peer);
 }
 
 void TelegramQml::insertContact(const Contact &c, bool fromDb)
@@ -5465,8 +5543,22 @@ void TelegramQml::timerEvent(QTimerEvent *e)
     {
         if( p->telegram && p->telegram->isConnected() )
         {
-            p->telegram->messagesGetDialogs(0, 1000);
-            p->telegram->channelsGetDialogs(0, 1000);
+            p->deletedDialogs.clear();
+            p->deletedChannels.clear();
+            //Initialize a list of all existing dialogs to check if one or more were deleted in the later response from server
+            for (QHash<qint64, DialogObject*>::iterator it = p->dialogs.begin(); it != p->dialogs.end(); ++it)
+            {
+                if(it.value()->classType() == Dialog::typeDialog)
+                    p->deletedDialogs.insert(it.key());
+                if(it.value()->classType() == Dialog::typeDialogChannel)
+                    p->deletedChannels.insert(it.key());
+            }
+            qWarning() << "Starting getMessageDialogs";
+            p->dialogSliceOffset = 0;
+            p->telegram->messagesGetDialogs(0, 200);
+            qWarning() << "Starting getChannelDialogs";
+            p->channelSliceOffset = 0;           
+            p->telegram->channelsGetDialogs(0, 200);
         }
 
         killTimer(p->upd_dialogs_timer);
