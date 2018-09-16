@@ -51,7 +51,7 @@ public Q_SLOTS:
 
     void readFullDialogs();
     void readMessages(const Peer &peer, int offset, int limit);
-    void markMessagesAsRead(const QList<qint32>& messages);
+    void markMessagesAsRead(const qint32 msgId, const Peer &peer);
     void markMessagesAsReadFromMaxDate(qint32 chatId, qint32 maxDate);
 
     void deleteMessage(qint64 msgId);

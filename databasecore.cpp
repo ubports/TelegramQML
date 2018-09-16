@@ -313,16 +313,27 @@ void DatabaseCore::markMessagesAsReadFromMaxDate(qint32 chatId, qint32 maxDate)
         qDebug() << __FUNCTION__ << markQuery.lastError().text();
 }
 
-void DatabaseCore::markMessagesAsRead(const QList<qint32> &messages)
+void DatabaseCore::markMessagesAsRead(const qint32 msgId, const DbPeer &dpeer)
 {
-    QSqlQuery markQuery(db);
-    markQuery.prepare("UPDATE Messages SET unread=0 WHERE id=:id");
+    const Peer & peer = dpeer.peer;
+    QSqlQuery query(db);
 
-    Q_FOREACH(qint32 msgId, messages) {
-        markQuery.bindValue(":id", msgId);
-
-        if(!markQuery.exec())
-            qDebug() << __FUNCTION__ << markQuery.lastError().text();
+    if (peer.classType() == Peer::typePeerChat || peer.classType() == Peer::typePeerChannel)
+    {
+        query.prepare("UPDATE Messages SET unread=0 WHERE unread=1 and toId=:chatId and toPeerType=:toPeerType and id<=:id");
+    }
+    else
+    {
+        query.prepare("UPDATE Messages SET unread=0 WHERE unread=1 and toId=:userId AND out=1 and toPeerType=:toPeerType and id<=:id");
+    }
+    query.bindValue(":userId", peer.userId());
+    query.bindValue(":chatId", peer.classType()==Peer::typePeerChat ? peer.chatId() : peer.channelId());
+    query.bindValue(":toPeerType", peer.classType());
+    query.bindValue(":id", msgId);
+    bool res = query.exec();
+    if(!res)
+    {
+        qDebug() << __FUNCTION__ << query.lastError();
     }
 }
 

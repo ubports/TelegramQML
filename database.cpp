@@ -131,10 +131,13 @@ void Database::markMessagesAsReadFromMaxDate(qint32 chatId, qint32 maxDate)
     QMetaObject::invokeMethod(this->core, "markMessagesAsReadFromMaxDate", Qt::QueuedConnection, Q_ARG(qint32, chatId), Q_ARG(qint32, maxDate));
 }
 
-void Database::markMessagesAsRead(const QList<qint32> &messages)
+void Database::markMessagesAsRead(const qint32 msgId, const Peer &peer)
 {
     FIRST_CHECK;
-    QMetaObject::invokeMethod(this->core, "markMessagesAsRead", Qt::QueuedConnection, Q_ARG(QList<qint32>, messages));
+    DbPeer dpeer;
+    dpeer.peer = peer;
+
+    QMetaObject::invokeMethod(this->core, "markMessagesAsRead", Qt::QueuedConnection, Q_ARG(qint32, msgId), Q_ARG(DbPeer, dpeer));
 }
 
 void Database::readMessages(const Peer &peer, int offset, int limit)
@@ -143,7 +146,7 @@ void Database::readMessages(const Peer &peer, int offset, int limit)
     DbPeer dpeer;
     dpeer.peer = peer;
 
-    QMetaObject::invokeMethod(this->core, "readMessages", Qt::QueuedConnection, Q_ARG(DbPeer,dpeer), Q_ARG(int,offset), Q_ARG(int,limit) );
+    QMetaObject::invokeMethod(this->core, "readMessages", Qt::QueuedConnection, Q_ARG(DbPeer, dpeer), Q_ARG(int,offset), Q_ARG(int,limit) );
 }
 
 void Database::deleteMessage(qint64 msgId)
