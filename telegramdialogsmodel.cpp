@@ -77,8 +77,6 @@ void TelegramDialogsModel::setTelegram(TelegramQml *tgo)
         connect( p->telegram->userData(), SIGNAL(valueChanged(QString)), this, SLOT(userDataChanged()) );
     }
 
-    recheck();
-
     Q_EMIT telegramChanged();
     Q_EMIT initializingChanged();
 }
@@ -181,25 +179,6 @@ void TelegramDialogsModel::refreshDatabase()
     telegram()->setBusy(true);
     p->telegram->database()->readFullDialogs();
     telegram()->setBusy(false);
-}
-
-void TelegramDialogsModel::recheck()
-{
-    if(!p->telegram)
-        return;
-
-    refreshDatabase();
-    dialogsChanged(true);
-
-    if(!p->telegram->authLoggedIn())
-        return;
-
-    Telegram *tgObject = p->telegram->telegram();
-    if(tgObject && tgObject->isConnected())
-    {
-        tgObject->messagesGetDialogs(0, 100);
-        tgObject->channelsGetDialogs(0, 100);
-    }
 }
 
 void TelegramDialogsModel::dialogsChanged(bool cachedData)

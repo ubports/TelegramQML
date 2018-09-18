@@ -30,9 +30,9 @@ void MessageObject::operator= ( const Message & another) {
     Q_EMIT dateChanged();
     *_media = another.media();
     Q_EMIT mediaChanged();
-    _fwdDate = another.fwdDate();
+    _fwdDate = another.fwdFrom().date();
     Q_EMIT fwdDateChanged();
-    *_fwdFromId = another.fwdFromId();
+    _fwdFromId = another.fwdFrom().fromId();
     Q_EMIT fwdFromIdChanged();
     _replyToMsgId = another.replyToMsgId();
     Q_EMIT replyToMsgIdChanged();
@@ -55,14 +55,13 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
     _encrypted = false;
     _upload = new UploadObject(this);
     _toId = new PeerObject(another.toId(), this);
-    _unread = (another.flags() & 0x1);
     _action = new MessageActionObject(another.action(), this);
     _fromId = another.fromId();
-    _out = (another.flags() & 0x2);
+    _out = another.out();
     _date = another.date();
     _media = new MessageMediaObject(another.media(), this);
-    _fwdDate = another.fwdDate();
-    _fwdFromId = new PeerObject(another.fwdFromId(), this);
+    _fwdDate = another.fwdFrom().date();
+    _fwdFromId = another.fwdFrom().fromId();
     _replyToMsgId = another.replyToMsgId();
     _entities = another.entities();
     _message = another.message();
@@ -159,6 +158,7 @@ QString MessageObject::getMessageWithEntities(const QString &plainText, const QL
             break;
             case MessageEntityObject::MessageEntityEnum::Hashtag:
             case MessageEntityObject::MessageEntityEnum::Mention:
+            case MessageEntityObject::MessageEntityEnum::BotCommand:
                 result.append("<font id=\"social\">");
                 result.append(plainText.mid(entity.offset(), entity.length()));
                 result.append("</font>");

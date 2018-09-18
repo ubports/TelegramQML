@@ -185,14 +185,7 @@ QSize TelegramFileHandler::imageSize() const
         break;
 
     case TypeTargetMediaAudio:
-        break;
-
     case TypeTargetMediaVideo:
-    {
-        VideoObject *vid = qobject_cast<VideoObject*>(p->target);
-        if(vid)
-            result = QSize(vid->w(), vid->h());
-    }
         break;
 
     case TypeTargetMediaDocument:
@@ -220,22 +213,6 @@ qint64 TelegramFileHandler::fileSize() const
         PhotoSizeObject *obj = qobject_cast<PhotoSizeObject*>(p->location->parent());
         if(obj)
             result = obj->size();
-    }
-        break;
-
-    case TypeTargetMediaAudio:
-    {
-        AudioObject *aud = qobject_cast<AudioObject*>(p->target);
-        if(aud)
-            result = aud->size();
-    }
-        break;
-
-    case TypeTargetMediaVideo:
-    {
-        VideoObject *vid = qobject_cast<VideoObject*>(p->target);
-        if(vid)
-            result = vid->size();
     }
         break;
 
@@ -322,12 +299,6 @@ bool TelegramFileHandler::download()
     InputFileLocation::InputFileLocationClassType type;
     switch(p->targetType)
     {
-    case TypeTargetMediaAudio:
-        type = InputFileLocation::typeInputAudioFileLocation;
-        break;
-    case TypeTargetMediaVideo:
-        type = InputFileLocation::typeInputVideoFileLocation;
-        break;
     case TypeTargetMediaDocument:
         type = InputFileLocation::typeInputDocumentFileLocation;
         break;
@@ -622,14 +593,8 @@ FileLocationObject *TelegramFileHandler::analyzeObject(QObject *target, int *tar
         case TypeObjectMessageMedia:
         {
             MessageMediaObject *media = static_cast<MessageMediaObject*>(target);
-            if(media->classType() == MessageMedia::typeMessageMediaAudio)
-                object = media->audio();
-            else
             if(media->classType() == MessageMedia::typeMessageMediaDocument)
                 object = media->document();
-            else
-            if(media->classType() == MessageMedia::typeMessageMediaVideo)
-                object = media->video();
             else
             if(media->classType() == MessageMedia::typeMessageMediaPhoto)
                 object = media->photo();
@@ -642,24 +607,11 @@ FileLocationObject *TelegramFileHandler::analyzeObject(QObject *target, int *tar
         }
             break;
 
-        case TypeObjectAudio:
-            object = p->telegram->locationOfAudio( static_cast<AudioObject*>(target) );
-            if(targetType) *targetType = TypeTargetMediaAudio;
-            if(targetPointer) *targetPointer = static_cast<AudioObject*>(target);
-            break;
-
         case TypeObjectDocument:
             object = p->telegram->locationOfDocument( static_cast<DocumentObject*>(target) );
             p->thumb_location = analyzeObject( static_cast<DocumentObject*>(target)->thumb() );
             if(targetType) *targetType = TypeTargetMediaDocument;
             if(targetPointer) *targetPointer = static_cast<DocumentObject*>(target);
-            break;
-
-        case TypeObjectVideo:
-            object = p->telegram->locationOfVideo( static_cast<VideoObject*>(target) );
-            p->thumb_location = analyzeObject( static_cast<VideoObject*>(target)->thumb() );
-            if(targetType) *targetType = TypeTargetMediaVideo;
-            if(targetPointer) *targetPointer = static_cast<VideoObject*>(target);
             break;
 
         case TypeObjectWebPage:
@@ -792,14 +744,8 @@ TelegramFileHandler::ObjectType TelegramFileHandler::detectObjectType(QObject *o
     if(qobject_cast<MessageMediaObject*>(obj))
         objectType = TypeObjectMessageMedia;
     else
-    if(qobject_cast<AudioObject*>(obj))
-        objectType = TypeObjectAudio;
-    else
     if(qobject_cast<DocumentObject*>(obj))
         objectType = TypeObjectDocument;
-    else
-    if(qobject_cast<VideoObject*>(obj))
-        objectType = TypeObjectVideo;
     else
     if(qobject_cast<WebPageObject*>(obj))
         objectType = TypeObjectWebPage;

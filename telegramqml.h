@@ -239,7 +239,7 @@ public:
     void setGlobalMute(bool stt);
     bool globalMute() const;
 
-    Q_INVOKABLE void helpGetInviteText(const QString &langCode);
+    Q_INVOKABLE void helpGetInviteText();
 
     Q_INVOKABLE DialogObject *dialog(qint64 id) const;
     Q_INVOKABLE MessageObject *message(qint64 id) const;
@@ -262,8 +262,6 @@ public:
     Q_INVOKABLE FileLocationObject *locationOfPhoto(PhotoObject *photo);
     Q_INVOKABLE FileLocationObject *locationOfThumbPhoto(PhotoObject *photo);
     Q_INVOKABLE FileLocationObject *locationOfDocument(DocumentObject *doc);
-    Q_INVOKABLE FileLocationObject *locationOfVideo(VideoObject *vid);
-    Q_INVOKABLE FileLocationObject *locationOfAudio(AudioObject *aud);
 
     Q_INVOKABLE bool documentIsSticker(DocumentObject *doc);
     Q_INVOKABLE qint64 documentStickerId(DocumentObject *doc);
@@ -309,10 +307,13 @@ public:
 
     Q_INVOKABLE void updatesGetDifference();
 
+    QMutex getDialogsLock;
+    QMutex getMessagesLock;
+    QMutex getChannelsLock;
+
 public Q_SLOTS:
     void authLogout();
     void authResetAuthorizations();
-    void authSendCall();
     void authSendCode();
     void authSendInvites(const QStringList &phoneNumbers, const QString &inviteText);
     void authSignIn(const QString &code, bool retry = false);
@@ -490,7 +491,6 @@ private Q_SLOTS:
     void authLogOut_slt(qint64 id, bool ok);
     void authSendCode_slt(qint64 msgId, const AuthSentCode &result);
     void authSendCodeError_slt(qint64 id);
-    void authSendCall_slt(qint64 id, bool ok);
     void authSendInvites_slt(qint64 id, bool ok);
     void authCheckPassword_slt(qint64 msgId, const AuthAuthorization &result);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);
@@ -558,7 +558,6 @@ private Q_SLOTS:
     void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
     void removeDialogsLock();
     void removeChannelsLock();
-    void channelsGetDialogs_slt(qint64 id, const MessagesDialogs &result);
 
     void updatesTooLong_slt();
     void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
@@ -608,10 +607,6 @@ private:
     static QString localFilesPrePath();
     static bool createAudioThumbnail(const QString &audio, const QString &output);
     QString publicKeyPath() const;
-
-    QMutex getDialogsLock;
-    QMutex getMessagesLock;
-    QMutex getChannelsLock;
 
 protected:
     void timerEvent(QTimerEvent *e);

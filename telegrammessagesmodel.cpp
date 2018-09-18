@@ -210,7 +210,7 @@ void TelegramMessagesModel::refresh()
 
     if (p->telegram->connected())
     {
-        tgObject->messagesGetHistory(peer, 0, 0, p->stepCount, p->maxId, 0);
+        tgObject->messagesGetHistory(peer, 0, 0, 0, p->stepCount, p->maxId, 0);
     }
     else
         p->telegram->database()->readMessages(TelegramMessagesModel::peer(), 0, p->stepCount);
@@ -248,7 +248,7 @@ void TelegramMessagesModel::loadMore(bool force)
 
     if (p->telegram->connected())
     {
-        tgObject->messagesGetHistory(peer, 0, p->load_count, p->load_limit, p->maxId, 0);
+        tgObject->messagesGetHistory(peer, 0, 0, p->load_count, p->load_limit, p->maxId, 0);
         p->refreshing = true;
     }
     else

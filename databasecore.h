@@ -91,15 +91,11 @@ private:
     QList<qint32> stringToUsers(const QString &str);
     QString usersToString( const QList<qint32> &users );
 
-    void insertAudio(const Audio &audio);
-    void insertVideo(const Video &video);
     void insertDocument(const Document &document);
     void insertGeo(int id, const GeoPoint &geo);
     void insertPhoto(const Photo &photo);
     void insertPhotoSize(qint64 pid, const QList<PhotoSize> &sizes);
 
-    Audio readAudio(qint64 id);
-    Video readVideo(qint64 id);
     Document readDocument(qint64 id);
     GeoPoint readGeo(qint64 id);
     Photo readPhoto(qint64 id);

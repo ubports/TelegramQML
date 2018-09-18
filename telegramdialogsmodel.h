@@ -65,7 +65,6 @@ public:
 
 public Q_SLOTS:
     void refreshDatabase();
-    void recheck();
 
 Q_SIGNALS:
     void telegramChanged();

@@ -78,13 +78,8 @@ void TelegramChatParticipantsModel::setDialog(DialogObject *dlg)
     p->participants.clear();
     endResetModel();
 
-    if(!p->dialog)
+    if(!p->dialog && !p->dialog->peer()->chatId() && !p->dialog->peer()->channelId())
         return;
-    if(!p->dialog->peer()->chatId())
-        return;
-    if(!p->dialog->peer()->channelId())
-        return;
-
     refresh();
 }
 
