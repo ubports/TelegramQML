@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QStringList>
+#include <QTextCharFormat>
 
 bool MessageObject::operator==(const MessageObject *that)
 {
@@ -38,6 +39,7 @@ void MessageObject::operator= ( const Message & another) {
     Q_EMIT replyToMsgIdChanged();
     _entities = another.entities();
     _message = another.message();
+    messageDocument(_msgDocument);
     Q_EMIT messageChanged();
     _classType = another.classType();
     Q_EMIT classTypeChanged();
@@ -65,6 +67,8 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
     _replyToMsgId = another.replyToMsgId();
     _entities = another.entities();
     _message = another.message();
+    _msgDocument = new QTextDocument();
+    messageDocument(_msgDocument);
     _classType = another.classType();
     _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
     _views = another.views();
@@ -72,6 +76,7 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
 }
 
 QRegExp MessageObject::rxEntity;
+QRegExp MessageObject::rxLinebreaks;
 
 void MessageObject::getEntitiesFromMessage(const QString messageText, QString &plainText, QList<MessageEntity> &entities)
 {
@@ -79,6 +84,8 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
     {
         rxEntity = QRegExp("\\*\\*.+\\*\\*|__.+__|```.+```|`.+`");
         rxEntity.setMinimal(true);
+        rxLinebreaks = QRegExp("\\n|\\r");
+
     }
     int offsetCorrection = 0;
 
@@ -124,65 +131,95 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
     plainText = plainText.replace("**", "").replace("__", "").replace("`", "");
 }
 
-QString MessageObject::getMessageWithEntities(const QString &plainText, const QList<MessageEntity> &entities)
+void MessageObject::messageDocument(QTextDocument *result)
 {
-    int sourcePosition = 0;
 
-    QString result("");
-    Q_FOREACH(const MessageEntityObject &entity, entities)
+    if(!_codeColor.isValid())
     {
-        if(entity.classType() == 0)
-            continue;
-        result.append(plainText.mid(sourcePosition, entity.offset() - sourcePosition));
-        switch(entity.messageEntityEnum())
-        {
-            case MessageEntityObject::MessageEntityEnum::Bold:
-                result.append("<b>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</b>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Italic:
-                result.append("<i>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</i>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Code:
-                result.append("<code>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</code>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Pre:
-                result.append("<pre>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</pre>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Hashtag:
-            case MessageEntityObject::MessageEntityEnum::Mention:
-            case MessageEntityObject::MessageEntityEnum::BotCommand:
-                result.append("<font id=\"social\">");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</font>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Email:
-                result.append("<a href=\"mailto:");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("\">");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</a>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::TextUrl:
-            case MessageEntityObject::MessageEntityEnum::Url:
-                auto url = plainText.mid(entity.offset(), entity.length());
-                result.append("<a href=\"");
-                result.append(entity.url().isEmpty()? url : entity.url());
-                result.append("\">");
-                result.append(url);
-                result.append("</a>");
-            break;
-        }
-        sourcePosition = entity.offset() + entity.length();
+        _linkColor.setNamedColor("#4db4d1");
+        _codeColor.setNamedColor("#d17f4d");
     }
-    result.append(plainText.mid(sourcePosition, plainText.length()));
-    return result;
+    if(_message.length() > 0)
+    {
+        result->clear();
+        result->setPlainText(_message);
+        Q_FOREACH(const MessageEntity &entity, _entities)
+        {
+            QTextCursor cursor{result};
+            cursor.setPosition(entity.offset(), QTextCursor::MoveAnchor);
+            cursor.setPosition(entity.offset() + entity.length(), QTextCursor::KeepAnchor);
+            const QString subText = _message.mid(entity.offset(), entity.length());
+            switch(entity.classType()) {
+            case MessageEntity::MessageEntityClassType::typeMessageEntityBold:
+            {
+                QTextCharFormat format;
+                format.setFontWeight(60);
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityBotCommand:
+                break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityCode:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityPre:
+            {
+                QTextCharFormat format;
+                format.setFontFamily("Ubuntu Mono");
+                format.setFontFixedPitch(true);
+                if (_codeColor.isValid()) {
+                    format.setForeground(_codeColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityEmail:
+            {
+                QTextCharFormat format;
+                format.setAnchor(true);
+                format.setAnchorHref("mailto:" % subText);
+                if (_linkColor.isValid()) {
+                    format.setForeground(_linkColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityItalic:
+            {
+                QTextCharFormat format;
+                format.setFontItalic(true);
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityHashtag:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityMention:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityMentionName:
+            {
+                QTextCharFormat format;
+                format.setAnchor(true);
+                format.setAnchorHref(subText);
+                if (_linkColor.isValid()) {
+                    format.setForeground(_linkColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityTextUrl:
+                break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityUrl:
+            {
+                QTextCharFormat format;
+                format.setAnchor(true);
+                format.setAnchorHref(subText);
+                format.setFontUnderline(true);
+                if (_linkColor.isValid()) {
+                    format.setForeground(_linkColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
 }
 

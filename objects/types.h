@@ -9,6 +9,8 @@
 #include <QStringList>
 #include <QtQml>
 #include <QFile>
+#include <QTextDocument>
+#include <QtGui>
 #include <telegram/types/types.h>
 #include "../photosizelist.h"
 #include "../documentattributelist.h"
@@ -5087,9 +5089,13 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(qint32 fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
     Q_PROPERTY(qint32 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
+    Q_PROPERTY(QString htmlMessage READ htmlMessage NOTIFY messageChanged)
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
     Q_PROPERTY(quint32 views READ views WRITE setViews NOTIFY viewsChanged)
+    Q_PROPERTY(QString linkColor WRITE setLinkColor)
+    Q_PROPERTY(QString codeColor WRITE setCodeColor)
+
 
 public:
     MessageObject(const Message & another, QObject *parent = 0);
@@ -5102,15 +5108,30 @@ public:
         _media(0),
         _hash(QByteArray())
     {
+        _msgDocument = new QTextDocument();
     }
 
-    ~MessageObject(){}
+    ~MessageObject(){
+        delete _msgDocument;
+    }
 
     static void getEntitiesFromMessage(const QString messageText, QString &plainText, QList<MessageEntity> &entities);
-    static QString getMessageWithEntities(const QString &plainText, const QList<MessageEntity> &entities);
+    void messageDocument(QTextDocument *result);
 
     qint32 id() const {
         return _id;
+    }
+
+    void setLinkColor(QString value) {
+        _linkColor.setNamedColor(value);
+    }
+
+    void setCodeColor(QString value) {
+        _codeColor.setNamedColor(value);
+    }
+
+    QString htmlMessage() {
+        return _msgDocument->toHtml();
     }
 
     void setId(qint32 value) {
@@ -5289,6 +5310,7 @@ public:
         if( value == _message )
             return;
         _message = value;
+        messageDocument(_msgDocument);
         Q_EMIT messageChanged();
         Q_EMIT changed();
     }
@@ -5371,14 +5393,18 @@ private:
     qint32 _fwdFromId;
     qint64 _replyToMsgId;
     QString _message;
+    QTextDocument* _msgDocument;
     qint32 _classType;
     qint64 _unifiedId;
     quint32 _views;
     QByteArray _hash;
     QList<MessageEntity> _entities;
+    QColor _linkColor;
+    QColor _codeColor;
 
     //Some Regex to match for text entity substitution
     static QRegExp rxEntity;
+    static QRegExp rxLinebreaks;
 
 };
 

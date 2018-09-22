@@ -581,10 +581,10 @@ private Q_SLOTS:
     void fatalError_slt();
 
 private:
-    void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false);
-    void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
+    void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false, bool announceChanges = true);
+    void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false, bool announceChanges = true);
     void insertUser(const User & newUser, bool fromDb = false );
-    void insertChat( const Chat & chat, bool fromDb = false, const ChatFull &chatFull = ChatFull() );
+    void insertChat(const Chat & chat, bool fromDb = false, const ChatFull &chatFull = ChatFull() , bool announceChanges = true);
     void insertStickerSet(const StickerSet &set, bool fromDb = false);
     void insertStickerPack(const StickerPack &pack, bool fromDb = false);
     void insertDocument(const Document &doc, bool fromDb = false);
