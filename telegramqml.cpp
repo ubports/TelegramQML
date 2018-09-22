@@ -66,7 +66,7 @@ const int THUMB_SIZE = 128;
 
 #endif
 
-#define DIALOGS_SLICE_SIZE 200
+#define DIALOGS_SLICE_SIZE 100
 
 TelegramQmlPrivate *telegramp_qml_tmp = 0;
 bool checkDialogLessThan( qint64 a, qint64 b );
@@ -3643,15 +3643,11 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &resul
     refreshSecretChats();
     if(result.classType() == MessagesDialogs::typeMessagesDialogsSlice)
     {
-        if (result.count() == DIALOGS_SLICE_SIZE)
+        if (result.dialogs().count() == DIALOGS_SLICE_SIZE)
         {
             qWarning() << "messagesGetDialogs_slt: Dialogs slice detected, continuing query";
             p->telegram->messagesGetDialogs(p->dialogSliceOffset, 0, InputPeer(), DIALOGS_SLICE_SIZE);
             return;
-        }
-        else
-        {
-            qWarning() << "messagesGetDialogs_slt: Finished slices, dialogs left:" << result.count();
         }
     }
     p->dialogSliceOffset = 0;
@@ -4490,8 +4486,8 @@ void TelegramQml::onConnectedChanged()
         updatesGetState();
         if (getDialogsLock.tryLock())
         {
-            qWarning() << "Starting getMessageDialogs at offset 0";
-            auto currentTime = QDateTime::currentDateTime().toTime_t();
+            qWarning() << "Starting getMessageDialogs";
+            auto currentTime = std::numeric_limits<qint32>::max();
             p->telegram->messagesGetDialogs(currentTime, 0, InputPeer(), DIALOGS_SLICE_SIZE);
 
         }
@@ -5438,8 +5434,8 @@ void TelegramQml::timerEvent(QTimerEvent *e)
             }
             if (getDialogsLock.tryLock())
             {
-                qWarning() << "Starting getMessageDialogs at offset 0";
-                auto currentTime = QDateTime::currentDateTime().toTime_t();
+                qWarning() << "Starting getMessageDialogs";
+                auto currentTime = std::numeric_limits<qint32>::max();
                 p->telegram->messagesGetDialogs(currentTime, 0, InputPeer(), DIALOGS_SLICE_SIZE);
 
             }
