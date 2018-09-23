@@ -5084,6 +5084,7 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(qint32 fromId READ fromId WRITE setFromId NOTIFY fromIdChanged)
     Q_PROPERTY(bool out READ out WRITE setOut NOTIFY outChanged)
     Q_PROPERTY(qint32 date READ date WRITE setDate NOTIFY dateChanged)
+    Q_PROPERTY(qint32 editDate READ editDate WRITE setEditDate NOTIFY editDateChanged)
     Q_PROPERTY(MessageMediaObject* media READ media WRITE setMedia NOTIFY mediaChanged)
     Q_PROPERTY(qint32 fwdDate READ fwdDate WRITE setFwdDate NOTIFY fwdDateChanged)
     Q_PROPERTY(qint32 fwdFromId READ fwdFromId WRITE setFwdFromId NOTIFY fwdFromIdChanged)
@@ -5123,11 +5124,11 @@ public:
     }
 
     void setLinkColor(QString value) {
-        _linkColor.setNamedColor(value);
+        linkColor.setNamedColor(value);
     }
 
     void setCodeColor(QString value) {
-        _codeColor.setNamedColor(value);
+        codeColor.setNamedColor(value);
     }
 
     QString htmlMessage() {
@@ -5254,6 +5255,18 @@ public:
         Q_EMIT changed();
     }
 
+    qint32 editDate() const {
+        return _editDate;
+    }
+
+    void setEditDate(qint32 value) {
+        if( value == _editDate )
+            return;
+        _editDate = value;
+        Q_EMIT editDateChanged();
+        Q_EMIT changed();
+    }
+
     MessageMediaObject* media() const {
         return _media;
     }
@@ -5353,8 +5366,8 @@ public:
         Q_EMIT changed();
     }
 
-    bool operator== (const MessageObject *that);
-    void operator= ( const Message & another);
+    bool operator== (const MessageObject &that);
+    void operator= ( const Message &another);
 
 Q_SIGNALS:
     void changed();
@@ -5368,6 +5381,7 @@ Q_SIGNALS:
     void fromIdChanged();
     void outChanged();
     void dateChanged();
+    void editDateChanged();
     void mediaChanged();
     void fwdDateChanged();
     void fwdFromIdChanged();
@@ -5388,6 +5402,7 @@ private:
     qint32 _fromId;
     bool _out;
     qint32 _date;
+    qint32 _editDate;
     MessageMediaObject* _media;
     qint32 _fwdDate;
     qint32 _fwdFromId;
@@ -5399,8 +5414,8 @@ private:
     quint32 _views;
     QByteArray _hash;
     QList<MessageEntity> _entities;
-    QColor _linkColor;
-    QColor _codeColor;
+    static QColor linkColor;
+    static QColor codeColor;
 
     //Some Regex to match for text entity substitution
     static QRegExp rxEntity;

@@ -3645,7 +3645,6 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &resul
     {
         if (result.dialogs().count() == DIALOGS_SLICE_SIZE)
         {
-            qWarning() << "messagesGetDialogs_slt: Dialogs slice detected, continuing query";
             p->telegram->messagesGetDialogs(p->dialogSliceOffset, 0, InputPeer(), DIALOGS_SLICE_SIZE);
             return;
         }
@@ -4486,7 +4485,6 @@ void TelegramQml::onConnectedChanged()
         updatesGetState();
         if (getDialogsLock.tryLock())
         {
-            qWarning() << "Starting getMessageDialogs";
             auto currentTime = std::numeric_limits<qint32>::max();
             p->telegram->messagesGetDialogs(currentTime, 0, InputPeer(), DIALOGS_SLICE_SIZE);
 
@@ -4615,7 +4613,7 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
     {
         //Test if we got this message already. Should speed up loading etc.
         MessageObject *newMsg = new MessageObject(m);
-        bool changed = (newMsg == currentMsg);
+        bool changed = !(*newMsg == *currentMsg);
         delete newMsg;
         if(!changed)
         {
@@ -4944,6 +4942,12 @@ void TelegramQml::insertUpdate(const Update &update)
         insertMessage(update.message());
         timerUpdateDialogs(3000);
         Q_EMIT messagesReceived(1);
+        break;
+
+    case Update::typeUpdateEditMessage:
+    case Update::typeUpdateEditChannelMessage:
+        insertMessage(update.message());
+        timerUpdateDialogs(3000);
         break;
 
     case Update::typeUpdateChatParticipantDelete:
@@ -5434,7 +5438,6 @@ void TelegramQml::timerEvent(QTimerEvent *e)
             }
             if (getDialogsLock.tryLock())
             {
-                qWarning() << "Starting getMessageDialogs";
                 auto currentTime = std::numeric_limits<qint32>::max();
                 p->telegram->messagesGetDialogs(currentTime, 0, InputPeer(), DIALOGS_SLICE_SIZE);
 

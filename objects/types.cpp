@@ -6,10 +6,13 @@
 #include <QDir>
 #include <QStringList>
 #include <QTextCharFormat>
+#include <QtQml/QQmlEngine>
 
-bool MessageObject::operator==(const MessageObject *that)
+bool MessageObject::operator==(const MessageObject &that)
 {
-    return this->_hash == that->_hash;
+    auto result = this->_hash.length() == that._hash.length() &&
+            this->_hash == (QString)that._hash;
+    return result;
 }
 
 void MessageObject::operator= ( const Message & another) {
@@ -29,6 +32,8 @@ void MessageObject::operator= ( const Message & another) {
     Q_EMIT outChanged();
     _date = another.date();
     Q_EMIT dateChanged();
+    _editDate = another.editDate();
+    Q_EMIT editDateChanged();
     *_media = another.media();
     Q_EMIT mediaChanged();
     _fwdDate = another.fwdFrom().date();
@@ -61,6 +66,7 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
     _fromId = another.fromId();
     _out = another.out();
     _date = another.date();
+    _editDate = another.editDate();
     _media = new MessageMediaObject(another.media(), this);
     _fwdDate = another.fwdFrom().date();
     _fwdFromId = another.fwdFrom().fromId();
@@ -77,6 +83,8 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
 
 QRegExp MessageObject::rxEntity;
 QRegExp MessageObject::rxLinebreaks;
+QColor MessageObject::linkColor;
+QColor MessageObject::codeColor;
 
 void MessageObject::getEntitiesFromMessage(const QString messageText, QString &plainText, QList<MessageEntity> &entities)
 {
@@ -134,10 +142,10 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
 void MessageObject::messageDocument(QTextDocument *result)
 {
 
-    if(!_codeColor.isValid())
+    if(!codeColor.isValid())
     {
-        _linkColor.setNamedColor("#4db4d1");
-        _codeColor.setNamedColor("#d17f4d");
+        linkColor.setNamedColor("#207982");
+        codeColor.setNamedColor("#997327");
     }
     if(_message.length() > 0)
     {
@@ -165,8 +173,8 @@ void MessageObject::messageDocument(QTextDocument *result)
                 QTextCharFormat format;
                 format.setFontFamily("Ubuntu Mono");
                 format.setFontFixedPitch(true);
-                if (_codeColor.isValid()) {
-                    format.setForeground(_codeColor);
+                if (codeColor.isValid()) {
+                    format.setForeground(codeColor);
                 }
                 cursor.mergeCharFormat(format);
                 break;
@@ -176,8 +184,8 @@ void MessageObject::messageDocument(QTextDocument *result)
                 QTextCharFormat format;
                 format.setAnchor(true);
                 format.setAnchorHref("mailto:" % subText);
-                if (_linkColor.isValid()) {
-                    format.setForeground(_linkColor);
+                if (linkColor.isValid()) {
+                    format.setForeground(linkColor);
                 }
                 cursor.mergeCharFormat(format);
                 break;
@@ -196,8 +204,8 @@ void MessageObject::messageDocument(QTextDocument *result)
                 QTextCharFormat format;
                 format.setAnchor(true);
                 format.setAnchorHref(subText);
-                if (_linkColor.isValid()) {
-                    format.setForeground(_linkColor);
+                if (linkColor.isValid()) {
+                    format.setForeground(linkColor);
                 }
                 cursor.mergeCharFormat(format);
                 break;
@@ -210,8 +218,8 @@ void MessageObject::messageDocument(QTextDocument *result)
                 format.setAnchor(true);
                 format.setAnchorHref(subText);
                 format.setFontUnderline(true);
-                if (_linkColor.isValid()) {
-                    format.setForeground(_linkColor);
+                if (linkColor.isValid()) {
+                    format.setForeground(linkColor);
                 }
                 cursor.mergeCharFormat(format);
                 break;
