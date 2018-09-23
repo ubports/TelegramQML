@@ -4153,7 +4153,7 @@ void TelegramQml::updatesTooLong_slt()
     p->syncManager->requestSync();
 }
 
-void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out)
+void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out)
 {
 
     Peer to_peer(Peer::typePeerUser);
@@ -4166,9 +4166,6 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
     msg.setDate(date);
     msg.setFlags(UNREAD_OUT_TO_FLAG(unread, out));
     msg.setToId(to_peer);
-    MessageFwdHeader fwdFrom;
-    fwdFrom.setFromId(fwd_from_id.userId());
-    fwdFrom.setDate(fwd_date);
     msg.setFwdFrom(fwdFrom);
     msg.setReplyToMsgId(reply_to_msg_id);
 
@@ -4204,7 +4201,7 @@ void TelegramQml::updateShortMessage_slt(qint32 id, qint32 userId, const QString
 
 }
 
-void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 chatId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out)
+void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 chatId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out)
 {
 
     Peer to_peer(Peer::typePeerChat);
@@ -4217,9 +4214,6 @@ void TelegramQml::updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 ch
     msg.setDate(date);
     msg.setFlags(UNREAD_OUT_TO_FLAG(unread, out));
     msg.setToId(to_peer);
-    MessageFwdHeader fwdFrom;
-    fwdFrom.setFromId(fwd_from_id.userId());
-    fwdFrom.setDate(fwd_date);
     msg.setFwdFrom(fwdFrom);
     msg.setReplyToMsgId(reply_to_msg_id);
 
