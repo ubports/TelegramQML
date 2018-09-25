@@ -5091,6 +5091,8 @@ class TELEGRAMQMLSHARED_EXPORT MessageObject : public TqObject
     Q_PROPERTY(qint32 replyToMsgId READ replyToMsgId WRITE setReplyToMsgId NOTIFY replyToMsgIdChanged)
     Q_PROPERTY(QString message READ message WRITE setMessage NOTIFY messageChanged)
     Q_PROPERTY(QString htmlMessage READ htmlMessage NOTIFY messageChanged)
+    Q_PROPERTY(qreal messageWidth READ messageWidth NOTIFY messageWidthChanged)
+
     Q_PROPERTY(qint32 classType READ classType WRITE setClassType NOTIFY classTypeChanged)
     Q_PROPERTY(qint64 unifiedId READ unifiedId NOTIFY unifiedIdChanged)
     Q_PROPERTY(quint32 views READ views WRITE setViews NOTIFY viewsChanged)
@@ -5133,6 +5135,11 @@ public:
 
     QString htmlMessage() {
         return _msgDocument->toHtml();
+    }
+
+    qreal messageWidth() {
+        qWarning() <<  _msgDocument->idealWidth();
+        return _msgDocument->idealWidth();
     }
 
     void setId(qint32 value) {
@@ -5387,6 +5394,7 @@ Q_SIGNALS:
     void fwdFromIdChanged();
     void replyToMsgIdChanged();
     void messageChanged();
+    void messageWidthChanged();
     void classTypeChanged();
     void unifiedIdChanged();
     void viewsChanged();
