@@ -5138,7 +5138,6 @@ public:
     }
 
     qreal messageWidth() {
-        qWarning() <<  _msgDocument->idealWidth();
         return _msgDocument->idealWidth();
     }
 

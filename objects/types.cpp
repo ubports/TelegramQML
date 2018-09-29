@@ -1,6 +1,8 @@
 #include "objects/types.h"
 
 #include <QPointer>
+#include <QScreen>
+#include <QtPrintSupport/QPrinter>
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
@@ -72,8 +74,11 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
     _fwdFromId = another.fwdFrom().fromId();
     _replyToMsgId = another.replyToMsgId();
     _entities = another.entities();
-    _message = another.message();
+    _message = another.message().isEmpty()? _media->caption() : another.message();
     _msgDocument = new QTextDocument();
+    //QPrinter printer(QPrinter::HighResolution);
+    //printer.setResolution(QScreen::physicalDotsPerInch());
+    //_msgDocument->documentLayout()->setPaintDevice(printer);
     messageDocument(_msgDocument);
     _classType = another.classType();
     _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
@@ -147,9 +152,9 @@ void MessageObject::messageDocument(QTextDocument *result)
         linkColor.setNamedColor("#207982");
         codeColor.setNamedColor("#997327");
     }
+    result->clear();
     if(_message.length() > 0)
     {
-        result->clear();
         result->setPlainText(_message);
         Q_FOREACH(const MessageEntity &entity, _entities)
         {
@@ -229,5 +234,6 @@ void MessageObject::messageDocument(QTextDocument *result)
             }
         }
     }
+    result->adjustSize();
 }
 

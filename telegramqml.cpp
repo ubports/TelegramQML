@@ -2687,7 +2687,8 @@ void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHas
             Q_FOREACH( const Update & u, result.otherUpdates() )
                 insertUpdate(u);
             Q_FOREACH( const User & u, result.users() )
-                insertUser(u);
+                insertUser(u, false, false);
+            Q_EMIT usersChanged();
             Q_FOREACH( const Chat & c, result.chats() )
                 insertChat(c, false, ChatFull(), false);
             Q_EMIT chatsChanged();
@@ -3411,7 +3412,8 @@ void TelegramQml::photosUploadProfilePhoto_slt(qint64 id, const PhotosPhoto &res
     }
 
     Q_FOREACH( const User & user, result.users() )
-        insertUser(user);
+        insertUser(user, false, false);
+    Q_EMIT usersChanged();
 
     p->profile_upload_id = 0;
     Q_EMIT uploadingProfilePhotoChanged();
@@ -3445,10 +3447,10 @@ void TelegramQml::contactsImportContacts_slt(qint64 id, const ContactsImportedCo
     Q_UNUSED(id)
 
     Q_FOREACH( const User & user, result.users() )
-        insertUser(user);
-
-    timerUpdateDialogs(100);
-    timerUpdateContacts(100);
+        insertUser(user, false, false);
+    Q_EMIT usersChanged();
+    timerUpdateDialogs(1000);
+    timerUpdateContacts(1000);
 
     Q_EMIT contactsImportedContacts(result.imported().length(), result.retryContacts().length());
 }
@@ -3460,7 +3462,8 @@ void TelegramQml::contactsGetContacts_slt(qint64 id, const ContactsContacts &res
     if (result.classType() == ContactsContacts::ContactsContactsClassType::typeContactsContacts)
     {
     Q_FOREACH( const User & user, result.users() )
-        insertUser(user);
+        insertUser(user, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Contact & contact, result.contacts() )
         insertContact(contact);
     }
@@ -3481,7 +3484,8 @@ void TelegramQml::usersGetUsers_slt(qint64 id, const QList<User> &users)
 {
     Q_UNUSED(id)
     Q_FOREACH( const User & user, users )
-        insertUser(user);
+        insertUser(user, false, false);
+    Q_EMIT usersChanged();
 }
 
 void TelegramQml::messagesSendMessage_slt(qint64 id, const UpdatesType &result)
@@ -3554,7 +3558,8 @@ void TelegramQml::messagesGetMessages_slt(qint64 id, const MessagesMessages &res
         insertChat(chat, false, ChatFull(), false);
     Q_EMIT chatsChanged();
     Q_FOREACH( const User & user, result.users() )
-        insertUser(user);
+        insertUser(user, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Message & message, result.messages() )
         insertMessage(message, false, false, false, false);
     Q_EMIT messagesChanged(false);
@@ -3619,7 +3624,8 @@ void TelegramQml::messagesGetDialogs_slt(qint64 id, const MessagesDialogs &resul
     Q_UNUSED(id)
 
     Q_FOREACH( const User & u, result.users() )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c, false, ChatFull(), false);
     Q_EMIT chatsChanged();
@@ -3670,7 +3676,8 @@ void TelegramQml::messagesGetHistory_slt(qint64 id, const MessagesMessages &resu
     Q_UNUSED(id)
 
     Q_FOREACH( const User & u, result.users() )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c, false, ChatFull(), false);
     Q_EMIT chatsChanged();
@@ -3724,7 +3731,8 @@ void TelegramQml::messagesSearch_slt(qint64 id, const MessagesMessages &result)
     QList<qint64> res;
 
     Q_FOREACH( const User & u, result.users() )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c, false, ChatFull(), false);
     Q_EMIT chatsChanged();
@@ -3742,7 +3750,8 @@ void TelegramQml::messagesGetFullChat_slt(qint64 id, const MessagesChatFull &res
 {
     Q_UNUSED(id)
     Q_FOREACH( const User & u, result.users() )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, result.chats() )
         insertChat(c, false, result.fullChat(), false);
     Q_EMIT chatsChanged();
@@ -3772,7 +3781,8 @@ void TelegramQml::messagesGetFullChat_slt(qint64 id, const MessagesChatFull &res
             if (!error.null)
                 return;
             Q_FOREACH(const User & user, result.users())
-                insertUser(user);            
+                insertUser(user, false, false);
+            Q_EMIT usersChanged();
             QList<ChatParticipant> transformedList;
             ChatParticipant myself;
             Q_FOREACH(const ChannelParticipant & participant, result.participants())
@@ -4276,7 +4286,8 @@ void TelegramQml::updatesCombined_slt(const QList<Update> & updates, const QList
     Q_FOREACH( const Update & u, updates )
         insertUpdate(u);
     Q_FOREACH( const User & u, users )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, chats )
         insertChat(c, false, ChatFull(), false);
     Q_EMIT chatsChanged();
@@ -4293,7 +4304,8 @@ void TelegramQml::updates_slt(const QList<Update> & updates, const QList<User> &
     Q_FOREACH( const Update & u, updates )
         insertUpdate(u);
     Q_FOREACH( const User & u, users )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, chats )
         insertChat(c, false, ChatFull(), false);
     Q_EMIT chatsChanged();
@@ -4315,7 +4327,8 @@ void TelegramQml::updatesGetDifference_slt(qint64 id, const QList<Message> &mess
     Q_FOREACH( const Update & u, otherUpdates )
         insertUpdate(u);
     Q_FOREACH( const User & u, users )
-        insertUser(u);
+        insertUser(u, false, false);
+    Q_EMIT usersChanged();
     Q_FOREACH( const Chat & c, chats )
         insertChat(c, false, ChatFull(), false);
     Q_EMIT chatsChanged();
@@ -4643,7 +4656,7 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
     }
 }
 
-void TelegramQml::insertUser(const User &newUser, bool fromDb)
+void TelegramQml::insertUser(const User &newUser, bool fromDb, bool announceChanges)
 {
     bool become_online = false;
     UserObject *userObj = p->users.value(newUser.id());
@@ -4681,7 +4694,8 @@ void TelegramQml::insertUser(const User &newUser, bool fromDb)
     if(newUser.id() == me())
         Q_EMIT myUserChanged();
 
-    Q_EMIT usersChanged();
+    if(announceChanges)
+        Q_EMIT usersChanged();
 }
 
 void TelegramQml::insertChat(const Chat &c, bool fromDb, const ChatFull &chatFull, bool announceChanges)
