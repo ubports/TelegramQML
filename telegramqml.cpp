@@ -94,6 +94,7 @@ public:
     QString configPath;
     QUrl publicKeyFile;
     QString currentSalt;
+    QString currentPasswordHint = "???";
 
     bool globalMute;
     bool online;
@@ -748,6 +749,11 @@ QString TelegramQml::authSignInError() const
 QString TelegramQml::error() const
 {
     return p->error;
+}
+
+QString TelegramQml::hint() const
+{
+    return p->currentPasswordHint;
 }
 
 void TelegramQml::setLogLevel(int level)
@@ -3220,10 +3226,11 @@ void TelegramQml::authSendCode_slt(qint64 msgId, const AuthSentCode &result)
     Q_EMIT authCodeRequested(result.phoneRegistered(), result.timeout() );
 }
 
-void TelegramQml::authSendCodeError_slt(qint64 id)
+void TelegramQml::authSendCodeError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
 {
-    Q_UNUSED(id)
-    p->telegram->authSendCode();
+    Q_UNUSED(msgId)
+    p->error=tr("Server error, try to close and reopen the app:") + errorCode + ":" + errorText;
+    Q_EMIT errorChanged();
 }
 
 void TelegramQml::authSendInvites_slt(qint64 id, bool ok)
@@ -3255,6 +3262,8 @@ void TelegramQml::accountGetPassword_slt(qint64 id, const AccountPassword &passw
     p->currentSalt = QString(password.currentSalt().toHex());
     if(password.classType() == AccountPassword::typeAccountPassword)
     {
+        p->currentPasswordHint = password.hint();
+        Q_EMIT hintChanged();
         Q_EMIT authPasswordNeeded();
     }
     else

@@ -119,6 +119,7 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(QString authSignUpError READ authSignUpError NOTIFY authSignUpErrorChanged)
     Q_PROPERTY(QString authSignInError READ authSignInError NOTIFY authSignInErrorChanged)
     Q_PROPERTY(QString error           READ error           NOTIFY errorChanged          )
+    Q_PROPERTY(QString hint           READ hint           NOTIFY hintChanged          )
 
     Q_PROPERTY(DialogObject* nullDialog READ nullDialog NOTIFY fakeSignal)
     Q_PROPERTY(MessageObject* nullMessage READ nullMessage NOTIFY fakeSignal)
@@ -226,6 +227,7 @@ public:
     QString authSignUpError() const;
     QString authSignInError() const;
     QString error() const;
+    QString hint() const;
 
     Q_INVOKABLE static void setLogLevel(int level);
 
@@ -464,6 +466,7 @@ Q_SIGNALS:
     void helpGetInviteTextAnswer(qint64 id, const HelpInviteText &message);
 
     void errorChanged();
+    void hintChanged();
     void meChanged();
     void myUserChanged();
     void fakeSignal();
@@ -490,7 +493,7 @@ private Q_SLOTS:
     void authLoggedIn_slt();
     void authLogOut_slt(qint64 id, bool ok);
     void authSendCode_slt(qint64 msgId, const AuthSentCode &result);
-    void authSendCodeError_slt(qint64 id);
+    void authSendCodeError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSendInvites_slt(qint64 id, bool ok);
     void authCheckPassword_slt(qint64 msgId, const AuthAuthorization &result);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);

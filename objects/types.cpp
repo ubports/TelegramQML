@@ -216,12 +216,11 @@ void MessageObject::messageDocument(QTextDocument *result)
                 break;
             }
             case MessageEntity::MessageEntityClassType::typeMessageEntityTextUrl:
-                break;
             case MessageEntity::MessageEntityClassType::typeMessageEntityUrl:
             {
                 QTextCharFormat format;
                 format.setAnchor(true);
-                format.setAnchorHref(subText);
+                format.setAnchorHref(entity.classType() == MessageEntity::MessageEntityClassType::typeMessageEntityTextUrl ? entity.url() : subText);
                 format.setFontUnderline(true);
                 if (linkColor.isValid()) {
                     format.setForeground(linkColor);
