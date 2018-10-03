@@ -3229,7 +3229,7 @@ void TelegramQml::authSendCode_slt(qint64 msgId, const AuthSentCode &result)
 void TelegramQml::authSendCodeError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
 {
     Q_UNUSED(msgId)
-    p->error=tr("Server error, try to close and reopen the app:") + errorCode + ":" + errorText;
+    p->error=tr("Server error, try to close and reopen the app: %1:").arg(errorCode) + errorText;
     Q_EMIT errorChanged();
 }
 
