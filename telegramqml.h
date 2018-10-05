@@ -496,6 +496,7 @@ private Q_SLOTS:
     void authSendCodeError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSendInvites_slt(qint64 id, bool ok);
     void authCheckPassword_slt(qint64 msgId, const AuthAuthorization &result);
+    void authCheckPasswordError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);
     void authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText);
     void error_slt(qint64 id, qint32 errorCode, QString errorText, QString functionName);

@@ -2937,6 +2937,7 @@ void TelegramQml::try_init()
 
     connect( p->telegram, &Telegram::disconnected, this, &TelegramQml::connectedChanged);
     connect( p->telegram, &Telegram::authCheckPasswordAnswer, this, &TelegramQml::authCheckPassword_slt);
+    connect(p->telegram, &Telegram::authCheckPasswordError, this, &TelegramQml::authCheckPasswordError_slt);
 
     connect( p->telegram, &Telegram::accountGetWallPapersAnswer, this, &TelegramQml::accountGetWallPapers_slt);
     connect( p->telegram, &Telegram::accountGetPasswordAnswer, this, &TelegramQml::accountGetPassword_slt);
@@ -3244,6 +3245,13 @@ void TelegramQml::authCheckPassword_slt(qint64 id, const AuthAuthorization& resu
     Q_UNUSED(id)
 
     insertUser(result.user());
+}
+
+void TelegramQml::authCheckPasswordError_slt(qint64 msgId, qint32 errorCode, const QString &errorText)
+{
+    Q_UNUSED(msgId)
+    p->error=errorText;
+    Q_EMIT errorChanged();
 }
 
 void TelegramQml::reconnect()
