@@ -3047,7 +3047,6 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::channelsEditTitleError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsExportInviteError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsGetChannelsError, this, &TelegramQml::onServerError);
-    connect( p->telegram, &Telegram::channelsGetChannelsError, this, &TelegramQml::removeChannelsLock);
     connect( p->telegram, &Telegram::channelsGetFullChannelError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsGetMessagesError, this, &TelegramQml::onServerError);
     connect( p->telegram, &Telegram::channelsGetParticipantError, this, &TelegramQml::onServerError);
@@ -3323,15 +3322,6 @@ void TelegramQml::removeDialogsLock(qint64 msgId, qint32 errorCode, const QStrin
     qWarning() << "removeDialogsLock due to error:" << errorText;
     getDialogsLock.unlock();
 }
-
-void TelegramQml::removeChannelsLock(qint64 msgId, qint32 errorCode, const QString &errorText)
-{
-    Q_UNUSED(msgId)
-    Q_UNUSED(errorCode)
-    qWarning() << "removeChannelsLock due to error:" << errorText;
-    getChannelsLock.unlock();
-}
-
 
 void TelegramQml::authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText)
 {

@@ -311,7 +311,6 @@ public:
 
     QMutex getDialogsLock;
     QMutex getMessagesLock;
-    QMutex getChannelsLock;
 
 public Q_SLOTS:
     void authLogout();
@@ -561,7 +560,6 @@ private Q_SLOTS:
 
     void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
     void removeDialogsLock(qint64 msgId, qint32 errorCode, const QString &errorText);
-    void removeChannelsLock(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void updatesTooLong_slt();
     void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out);
