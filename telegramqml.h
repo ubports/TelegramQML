@@ -560,8 +560,8 @@ private Q_SLOTS:
     void messagesUninstallStickerSet_slt(qint64 msgId, bool ok);
 
     void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
-    void removeDialogsLock();
-    void removeChannelsLock();
+    void removeDialogsLock(qint64 msgId, qint32 errorCode, const QString &errorText);
+    void removeChannelsLock(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void updatesTooLong_slt();
     void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out);
@@ -580,6 +580,7 @@ private Q_SLOTS:
     void uploadSendFile_slt(qint64 fileId, qint32 partId, qint32 uploaded, qint32 totalSize);
     void uploadCancelFile_slt(qint64 fileId, bool cancelled);
 
+    void getDialogs();
     void onConnectedChanged();
 
     void fatalError_slt();
@@ -603,7 +604,11 @@ private:
     void blockUser(qint64 userId);
     void unblockUser(qint64 userId);
 
+    void sortMessages();
+    void sortMessages(qint64 did);
+    void sortDialogs();
     void setReadFlag(qint32 dId, const qint32 maxId, const Peer &peer);
+    void updateUnreadCount(qint32 dId, const qint32 maxId, const Peer &peer);
 
     QString fileLocation_old( FileLocationObject *location );
     QString fileLocation_old2( FileLocationObject *location );
