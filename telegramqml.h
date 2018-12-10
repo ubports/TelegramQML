@@ -311,6 +311,7 @@ public:
 
     QMutex getDialogsLock;
     QMutex getMessagesLock;
+    QMutex reconnectLock;
 
 public Q_SLOTS:
     void authLogout();
@@ -560,6 +561,7 @@ private Q_SLOTS:
 
     void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
     void removeDialogsLock(qint64 msgId, qint32 errorCode, const QString &errorText);
+    void removeReconnectLock(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void updatesTooLong_slt();
     void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out);
@@ -570,7 +572,6 @@ private Q_SLOTS:
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
     void updatesGetDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
-    void updatesGetChannelDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
     void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
     void updatesGetState_err(qint64 msgId, qint32 errorCode, const QString &errorText);
 

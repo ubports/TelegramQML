@@ -67,6 +67,7 @@ const int THUMB_SIZE = 128;
 #endif
 
 #define DIALOGS_SLICE_SIZE 100
+#define CHANNEL_UPDATE_TIME 15000
 
 TelegramQmlPrivate *telegramp_qml_tmp = 0;
 bool checkDialogLessThan( qint64 a, qint64 b );
@@ -290,7 +291,7 @@ TelegramQml::TelegramQml(QObject *parent) :
     //connect(p->messageRequester, SIGNAL(timeout()), SLOT(requestReadMessage_prv()));
     p->channelPoller = new QTimer(this);
     connect(p->channelPoller, SIGNAL(timeout()), this, SLOT(updatesGetChannelDifference()));
-    p->channelPoller->start(15000);
+    p->channelPoller->start(CHANNEL_UPDATE_TIME);
 }
 
 QString TelegramQml::phoneNumber() const
@@ -2300,7 +2301,7 @@ qint64 TelegramQml::sendFile(qint64 dId, const QString &fpath, bool forceDocumen
     qint64 fileId;
     p->msg_send_random_id = generateRandomId();
     const QMimeType & t = p->mime_db.mimeTypeForFile(file);
-
+    qWarning() << "Sending file mime type:" << t.name();
     QString thumbnail = p->thumbnailer.getThumbPath(tempPath(), fpath);
     if (t.name().contains("video/") && !p->thumbnailer.hasThumbnail(thumbnail)) {
 #ifdef TG_THUMBNAILER_CPP11
@@ -2681,6 +2682,7 @@ void TelegramQml::updatesGetChannelDifference(qint32 channelId, qint64 accessHas
     TelegramCore::Callback<UpdatesChannelDifference> callback = [this, channelId, accessHash](TG_UPDATES_GET_CHANNEL_DIFFERENCE_CALLBACK) {
         if(!error.null) {
             onServerError(msgId, error.errorCode, error.errorText);
+
             return;
         }
         if(result.classType() != UpdatesChannelDifference::typeUpdatesChannelDifferenceEmpty)
@@ -2720,10 +2722,17 @@ void TelegramQml::updatesGetChannelDifference()
 
     Q_FOREACH(ChatObject *chat, p->chats)
     {
-        if (chat->classType() == Chat::typeChannel && p->dialogs.contains(chat->id()))
+        if (chat->classType() == Chat::typeChannel && !chat->megaGroup() && p->dialogs.contains(chat->id()))
         {
             updatesGetChannelDifference(chat->id(), chat->accessHash());
         }
+    }
+    if(busy())
+    {
+        setBusy(false);
+        p->channelPoller->start(CHANNEL_UPDATE_TIME);
+        reconnectLock.tryLock();
+        reconnectLock.unlock();
     }
 
 }
@@ -2912,7 +2921,6 @@ void TelegramQml::try_init()
     connect( p->telegram, &Telegram::accountRegisterDeviceAnswer, this, &TelegramQml::accountRegisterDevice_slt);
     connect( p->telegram, &Telegram::accountUnregisterDeviceAnswer, this, &TelegramQml::accountUnregisterDevice_slt);
     connect( p->telegram, &Telegram::error, this, &TelegramQml::error_slt);
-    connect( p->telegram, &Telegram::connected, this, &TelegramQml::connectedChanged);
     connect( p->telegram, &Telegram::connected, this, &TelegramQml::onConnectedChanged);
     connect( p->telegram, &Telegram::authLoggedIn, this, &TelegramQml::onConnectedChanged);
 
@@ -3174,8 +3182,8 @@ void TelegramQml::authLoggedIn_slt()
     Q_EMIT authPhoneCheckedChanged();
     Q_EMIT meChanged();
 
-    QTimer::singleShot(1000, this, SLOT(updatesGetState()));
-    timerUpdateContacts(1000);
+    timerUpdateContacts(8000);
+    onConnectedChanged();
 
 }
 
@@ -3313,6 +3321,21 @@ void TelegramQml::authSignInError_slt(qint64 id, qint32 errorCode, QString error
 void TelegramQml::onServerError(qint64 msgId, qint32 errorCode, const QString &errorText)
 {
     qWarning() << __FUNCTION__ << "msg: " << msgId << errorCode << errorText;
+    if(errorCode == 401)
+    {
+        if(errorText == "AUTH_KEY_UNREGISTERED")
+        {
+            authLogOut_slt(0, true);
+        }
+    }
+}
+
+void TelegramQml::removeReconnectLock(qint64 msgId, qint32 errorCode, const QString &errorText)
+{
+    Q_UNUSED(msgId)
+    Q_UNUSED(errorCode)
+    qWarning() << "removeReconnectLock due to error:" << errorText;
+    reconnectLock.unlock();
 }
 
 void TelegramQml::removeDialogsLock(qint64 msgId, qint32 errorCode, const QString &errorText)
@@ -4357,12 +4380,6 @@ void TelegramQml::updatesGetDifference_slt(qint64 id, const QList<Message> &mess
     }
 }
 
-void TelegramQml::updatesGetChannelDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText)
-{
-    Q_UNUSED(msgId)
-    qWarning() << "updatesGetChannelDifference_err: got error " << errorCode << ", text: " <<errorText;
-}
-
 void TelegramQml::updatesGetDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText)
 {
     Q_UNUSED(msgId)
@@ -4375,7 +4392,8 @@ void TelegramQml::updatesGetState_slt(qint64 msgId, const UpdatesState &result)
 
     if (!p->syncManager->getState().date())
     {
-        p->syncManager->setState(result);;
+        p->syncManager->setState(result);
+        getDialogs();
         return;
     }
     if(!p->syncManager->isSynced(result))
@@ -4513,11 +4531,14 @@ void TelegramQml::getDialogs()
 
 void TelegramQml::onConnectedChanged()
 {
-    if (p->telegram->isConnected() && p->authLoggedIn )
+    Q_EMIT connectedChanged();
+    if (p->telegram->isConnected() && p->authLoggedIn && reconnectLock.tryLock())
     {
-        QThread::msleep(500);
+        qWarning() << "(Re)Connected, querying initial states";
+        thread()->msleep(2000);;
+        p->channelPoller->stop();
+        setBusy(true);
         updatesGetState();
-        getDialogs();
         updatesGetChannelDifference();
     }
 }
@@ -4605,21 +4626,20 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
         m.setReplyToMsgId(0);
     }
 
-    qint64 dialogId = m.toId().channelId();
-    if(!dialogId)
-        dialogId = m.toId().chatId();
-    if(!dialogId)
-        dialogId = m.toId().userId();
-    if(dialogId)
-        dialogId = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
-    auto dialog = p->dialogs.value(dialogId);
+
+    qint64 did = m.toId().channelId();
+    if ( !did )
+        did = m.toId().chatId();
+    if( !did )
+        did = FLAG_TO_OUT(m.flags())? m.toId().userId() : m.fromId();
+    auto dialog = p->dialogs.value(did);
     MessageObject *currentMsg = p->messages.value(unifiedId);
     if( !currentMsg )
     {
         currentMsg = new MessageObject(m, this);
         currentMsg->setEncrypted(encrypted);
         p->messages.insert(unifiedId, currentMsg);
-        p->messages_list[dialogId].append(unifiedId);
+        p->messages_list[did].append(unifiedId);
     }
     else if(fromDb && !encrypted)
     {
@@ -4647,7 +4667,7 @@ void TelegramQml::insertMessage(const Message &newMsg, bool encrypted, bool from
 
     if(announceChanges)
     {
-        sortMessages(dialogId);
+        sortMessages(did);
         Q_EMIT messagesChanged(fromDb && !encrypted);
     }
 
@@ -4863,8 +4883,6 @@ void TelegramQml::insertUpdate(const Update &update)
 {
     UserObject *user = p->users.value(update.userId());
     ChatObject *chat = p->chats.value(update.chatId() ? update.chatId() : update.channelId());
-
-    qWarning() << update.toMap()["classType"];
 
     switch( static_cast<int>(update.classType()) )
     {
@@ -5137,7 +5155,6 @@ void TelegramQml::insertUpdate(const Update &update)
     case Update::typeUpdateReadHistoryInbox:
     case Update::typeUpdateReadChannelInbox:
     {
-        qWarning() << update.toMap();
         const qint64 dId = update.channelId()? update.channelId() : update.peer().chatId()? update.peer().chatId() : update.peer().userId();
         updateUnreadCount(dId, update.maxId(), update.peer());
     }
@@ -5158,7 +5175,6 @@ void TelegramQml::updateUnreadCount(qint32 dId, const qint32 maxId, const Peer &
     auto dialog = p->dialogs[dId];
     if(dialog)
     {
-        qWarning() << "Updating unread count:" << dialog->unreadCount();
         p->dialogs[dId]->setUnreadCount(0);
         qint32 peerId = 0;
         switch(peer.classType())
