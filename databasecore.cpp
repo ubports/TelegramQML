@@ -211,14 +211,8 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":fromId",message.fromId() );
     query.bindValue(":out", (message.flags()&0x2?true:false) );
     query.bindValue(":date",message.date() );
-    query.bindValue(":fwdDate",message.fwdDate() );
-    if (message.fwdFromId().classType()==Peer::typePeerChannel)
-        query.bindValue(":fwdFromId", message.fwdFromId().channelId() );
-    else if (message.fwdFromId().classType()==Peer::typePeerChat)
-        query.bindValue(":fwdFromId", message.fwdFromId().chatId() );
-    else
-        query.bindValue(":fwdFromId", message.fwdFromId().userId() );
-    query.bindValue(":fwdFromPeerType", message.fwdFromId().classType());
+    query.bindValue(":fwdDate",message.fwdFrom().date() );
+    query.bindValue(":fwdFromId", message.fwdFrom().fromId() == 0? message.fwdFrom().channelId() : message.fwdFrom().fromId() );
     query.bindValue(":replyToMsgId",message.replyToMsgId() );
     query.bindValue(":message", ENCRYPTER->encrypt(message.message(), encrypted) );
 
@@ -241,10 +235,6 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
     query.bindValue(":mediaDocument",media.document().id() );
     query.bindValue(":mediaGeo",message.id() );
     query.bindValue(":mediaPhoto",media.photo().id() );
-    query.bindValue(":mediaVideo",media.video().id() );
-    query.bindValue(":mediaAudio",media.audio().id() );
-
-
 
     bool res = query.exec();
     if(!res)
@@ -253,11 +243,9 @@ void DatabaseCore::insertMessage(const DbMessage &dmessage, bool encrypted)
         return;
     }
 
-    insertAudio(media.audio());
     insertDocument(media.document());
     insertGeo(message.id(), media.geo());
     insertPhoto(media.photo());
-    insertVideo(media.video());
 }
 
 void DatabaseCore::insertMediaEncryptedKeys(qint64 mediaId, const QByteArray &key, const QByteArray &iv)
@@ -375,8 +363,6 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         media.setLastName( record.value("mediaLastName").toString() );
         media.setPhoneNumber( record.value("mediaPhoneNumber").toString() );
         media.setUserId( record.value("mediaUserId").toLongLong() );
-        media.setAudio( readAudio(record.value("mediaAudio").toLongLong()) );
-        media.setVideo( readVideo(record.value("mediaVideo").toLongLong()) );
         media.setDocument( readDocument(record.value("mediaDocument").toLongLong()) );
         media.setPhoto( readPhoto(record.value("mediaPhoto").toLongLong()) );
         media.setGeo( readGeo(record.value("mediaGeo").toLongLong()) );
@@ -403,15 +389,10 @@ void DatabaseCore::readMessages(const DbPeer &dpeer, int offset, int limit)
         message.setFromId( record.value("fromId").toLongLong() );
         message.setFlags(flags);
         message.setDate( record.value("date").toLongLong() );
-        message.setFwdDate( record.value("fwdDate").toLongLong() );
-        Peer fwdFromPeer( static_cast<Peer::PeerClassType>(record.value("fwdFromPeerType").toLongLong()));
-        if(fwdFromPeer.classType() == Peer::typePeerChat)
-            fwdFromPeer.setChatId(record.value("fwdFromId").toLongLong());
-        else if(fwdFromPeer.classType() == Peer::typePeerChannel)
-            fwdFromPeer.setChannelId(record.value("fwdFromId").toLongLong());
-        else
-            fwdFromPeer.setUserId(record.value("fwdFromId").toLongLong());
-        message.setFwdFromId(fwdFromPeer);
+        MessageFwdHeader fwdFrom;
+        fwdFrom.setDate(record.value("fwdDate").toLongLong());
+        fwdFrom.setFromId(record.value("fwdFromId").toLongLong());
+        message.setFwdFrom(fwdFrom);
         message.setReplyToMsgId( record.value("replyToMsgId").toLongLong() );
         message.setMessage( ENCRYPTER->decrypt(record.value("message")) );
         message.setViews(record.value("views").toLongLong());
@@ -1059,65 +1040,6 @@ QString DatabaseCore::usersToString(const QList<qint32> &users)
     return list.join(",");
 }
 
-void DatabaseCore::insertAudio(const Audio &audio)
-{
-    if(audio.id() == 0 || audio.classType() == Audio::typeAudioEmpty)
-        return;
-
-    begin();
-    QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Audios (id, dcId, mimeType, duration, date, size, accessHash, type) "
-                  "VALUES (:id, :dcId, :mimeType, :duration, :date, :size, :accessHash, :type);");
-
-    query.bindValue(":id", audio.id());
-    query.bindValue(":dcId", audio.dcId());
-    query.bindValue(":mimeType", audio.mimeType());
-    query.bindValue(":duration", audio.duration());
-    query.bindValue(":date", audio.date());
-    query.bindValue(":size", audio.size());
-    query.bindValue(":accessHash", audio.accessHash());
-    query.bindValue(":type", audio.classType());
-
-    bool res = query.exec();
-    if(!res)
-    {
-        qDebug() << __FUNCTION__ << query.lastError();
-        return;
-    }
-}
-
-void DatabaseCore::insertVideo(const Video &video)
-{
-    if(video.id() == 0 || video.classType() == Video::typeVideoEmpty)
-        return;
-
-    begin();
-    QSqlQuery query(db);
-    query.prepare("INSERT OR REPLACE INTO Videos (id, dcId, caption, mimeType, date, duration, h, size, accessHash, w, type) "
-                  "VALUES (:id, :dcId, :caption, :mimeType, :date, :duration, :h, :size, :accessHash, :w, :type);");
-
-    query.bindValue(":id", video.id());
-    query.bindValue(":dcId", video.dcId());
-    query.bindValue(":caption", QString());
-    query.bindValue(":mimeType", QString());
-    query.bindValue(":date", video.date());
-    query.bindValue(":duration", video.duration());
-    query.bindValue(":h", video.h());
-    query.bindValue(":w", video.w());
-    query.bindValue(":size", video.size());
-    query.bindValue(":accessHash", video.accessHash());
-    query.bindValue(":type", video.classType());
-
-    bool res = query.exec();
-    if(!res)
-    {
-        qDebug() << __FUNCTION__ << query.lastError();
-        return;
-    }
-
-    insertPhotoSize(video.id(), QList<PhotoSize>()<<video.thumb());
-}
-
 void DatabaseCore::insertDocument(const Document &document)
 {
     if(document.id() == 0 || document.classType() == Document::typeDocumentEmpty)
@@ -1228,81 +1150,6 @@ void DatabaseCore::insertPhotoSize(qint64 pid, const QList<PhotoSize> &sizes)
         if(!res)
             qDebug() << __FUNCTION__ << query.lastError();
     }
-}
-
-Audio DatabaseCore::readAudio(qint64 id)
-{
-    Audio audio(Audio::typeAudioEmpty);
-    if(!id)
-        return audio;
-
-    QSqlQuery query(db);
-    query.prepare("SELECT * FROM Audios WHERE id=:id");
-    query.bindValue(":id", id);
-
-    bool res = query.exec();
-    if(!res)
-    {
-        qDebug() << __FUNCTION__ << query.lastError();
-        return audio;
-    }
-
-    if(!query.next())
-        return audio;
-
-    const QSqlRecord &record = query.record();
-
-    audio.setId( record.value("id").toLongLong() );
-    audio.setDcId( record.value("dcId").toLongLong() );
-    audio.setMimeType( record.value("mimeType").toString() );
-    audio.setDuration( record.value("duration").toLongLong() );
-    audio.setDate( record.value("date").toLongLong() );
-    audio.setSize( record.value("size").toLongLong() );
-    audio.setAccessHash( record.value("accessHash").toLongLong() );
-    audio.setClassType( static_cast<Audio::AudioClassType>(record.value("type").toLongLong()) );
-
-    return audio;
-}
-
-Video DatabaseCore::readVideo(qint64 id)
-{
-    Video video(Video::typeVideoEmpty);
-    if(!id)
-        return video;
-
-    QSqlQuery query(db);
-    query.prepare("SELECT * FROM Videos WHERE id=:id");
-    query.bindValue(":id", id);
-
-    bool res = query.exec();
-    if(!res)
-    {
-        qDebug() << __FUNCTION__ << query.lastError();
-        return video;
-    }
-
-    if(!query.next())
-        return video;
-
-    const QSqlRecord &record = query.record();
-
-    video.setId( record.value("id").toLongLong() );
-    video.setDcId( record.value("dcId").toLongLong() );
-    video.setMimeType( record.value("mimeType").toString() );
-    //video.setCaption( record.value("caption").toString() );
-    video.setDate( record.value("date").toLongLong() );
-    video.setDuration( record.value("duration").toLongLong() );
-    video.setSize( record.value("size").toLongLong() );
-    video.setW( record.value("w").toLongLong() );
-    video.setH( record.value("h").toLongLong() );
-    video.setAccessHash( record.value("accessHash").toLongLong() );
-    video.setClassType( static_cast<Video::VideoClassType>(record.value("type").toLongLong()) );
-
-    const QList<PhotoSize> &sizes = readPhotoSize(video.id());
-    if(!sizes.isEmpty())
-        video.setThumb(sizes.first());
-
-    return video;
 }
 
 Document DatabaseCore::readDocument(qint64 id)

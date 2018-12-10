@@ -77,7 +77,7 @@ void StickersModel::recheck()
     if(!tg)
         return;
 
-    tg->messagesGetAllStickers(QString());
+    tg->messagesGetAllStickers(0);
     if(!p->currentSet.isEmpty() && !p->currentSet.toLongLong() && p->currentSet != "0")
         p->telegram->getStickerSet(p->currentSet);
 }

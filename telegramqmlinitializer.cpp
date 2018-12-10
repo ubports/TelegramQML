@@ -114,14 +114,8 @@ void TelegramQmlInitializer::initializeTypes(const char *uri) {
     qmlRegisterType<PhotoSizeObject>(uri, 1, 0, "PhotoSize");
     qRegisterMetaType<PhotoSizeObject*>("PhotoSizeObject*");
 
-    qmlRegisterType<AudioObject>(uri, 1, 0, "Audio");
-    qRegisterMetaType<AudioObject*>("AudioObject*");
-
     qmlRegisterType<DocumentObject>(uri, 1, 0, "Document");
     qRegisterMetaType<DocumentObject*>("DocumentObject*");
-
-    qmlRegisterType<VideoObject>(uri, 1, 0, "Video");
-    qRegisterMetaType<VideoObject*>("VideoObject*");
 
     qmlRegisterType<WebPageObject>(uri, 1, 0, "WebPage");
     qRegisterMetaType<WebPageObject*>("WebPageObject*");

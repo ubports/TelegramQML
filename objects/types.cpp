@@ -1,14 +1,20 @@
 #include "objects/types.h"
 
 #include <QPointer>
+#include <QScreen>
+#include <QtPrintSupport/QPrinter>
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
 #include <QStringList>
+#include <QTextCharFormat>
+#include <QtQml/QQmlEngine>
 
-bool MessageObject::operator==(const MessageObject *that)
+bool MessageObject::operator==(const MessageObject &that)
 {
-    return this->_hash == that->_hash;
+    auto result = this->_hash.length() == that._hash.length() &&
+            this->_hash == (QString)that._hash;
+    return result;
 }
 
 void MessageObject::operator= ( const Message & another) {
@@ -28,16 +34,19 @@ void MessageObject::operator= ( const Message & another) {
     Q_EMIT outChanged();
     _date = another.date();
     Q_EMIT dateChanged();
+    _editDate = another.editDate();
+    Q_EMIT editDateChanged();
     *_media = another.media();
     Q_EMIT mediaChanged();
-    _fwdDate = another.fwdDate();
+    _fwdDate = another.fwdFrom().date();
     Q_EMIT fwdDateChanged();
-    *_fwdFromId = another.fwdFromId();
+    _fwdFromId = another.fwdFrom().fromId();
     Q_EMIT fwdFromIdChanged();
     _replyToMsgId = another.replyToMsgId();
     Q_EMIT replyToMsgIdChanged();
     _entities = another.entities();
     _message = another.message();
+    messageDocument(_msgDocument);
     Q_EMIT messageChanged();
     _classType = another.classType();
     Q_EMIT classTypeChanged();
@@ -55,17 +64,22 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
     _encrypted = false;
     _upload = new UploadObject(this);
     _toId = new PeerObject(another.toId(), this);
-    _unread = (another.flags() & 0x1);
     _action = new MessageActionObject(another.action(), this);
     _fromId = another.fromId();
-    _out = (another.flags() & 0x2);
+    _out = another.out();
     _date = another.date();
+    _editDate = another.editDate();
     _media = new MessageMediaObject(another.media(), this);
-    _fwdDate = another.fwdDate();
-    _fwdFromId = new PeerObject(another.fwdFromId(), this);
+    _fwdDate = another.fwdFrom().date();
+    _fwdFromId = another.fwdFrom().fromId();
     _replyToMsgId = another.replyToMsgId();
     _entities = another.entities();
-    _message = another.message();
+    _message = another.message().isEmpty()? _media->caption() : another.message();
+    _msgDocument = new QTextDocument();
+    //QPrinter printer(QPrinter::HighResolution);
+    //printer.setResolution(QScreen::physicalDotsPerInch());
+    //_msgDocument->documentLayout()->setPaintDevice(printer);
+    messageDocument(_msgDocument);
     _classType = another.classType();
     _unifiedId = _id == 0 ? 0 : QmlUtils::getUnifiedMessageKey(_id, _toId->channelId());
     _views = another.views();
@@ -73,6 +87,9 @@ MessageObject::MessageObject(const Message & another, QObject *parent) : TqObjec
 }
 
 QRegExp MessageObject::rxEntity;
+QRegExp MessageObject::rxLinebreaks;
+QColor MessageObject::linkColor;
+QColor MessageObject::codeColor;
 
 void MessageObject::getEntitiesFromMessage(const QString messageText, QString &plainText, QList<MessageEntity> &entities)
 {
@@ -80,6 +97,8 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
     {
         rxEntity = QRegExp("\\*\\*.+\\*\\*|__.+__|```.+```|`.+`");
         rxEntity.setMinimal(true);
+        rxLinebreaks = QRegExp("\\n|\\r");
+
     }
     int offsetCorrection = 0;
 
@@ -125,64 +144,95 @@ void MessageObject::getEntitiesFromMessage(const QString messageText, QString &p
     plainText = plainText.replace("**", "").replace("__", "").replace("`", "");
 }
 
-QString MessageObject::getMessageWithEntities(const QString &plainText, const QList<MessageEntity> &entities)
+void MessageObject::messageDocument(QTextDocument *result)
 {
-    int sourcePosition = 0;
 
-    QString result("");
-    Q_FOREACH(const MessageEntityObject &entity, entities)
+    if(!codeColor.isValid())
     {
-        if(entity.classType() == 0)
-            continue;
-        result.append(plainText.mid(sourcePosition, entity.offset() - sourcePosition));
-        switch(entity.messageEntityEnum())
-        {
-            case MessageEntityObject::MessageEntityEnum::Bold:
-                result.append("<b>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</b>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Italic:
-                result.append("<i>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</i>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Code:
-                result.append("<code>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</code>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Pre:
-                result.append("<pre>");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</pre>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Hashtag:
-            case MessageEntityObject::MessageEntityEnum::Mention:
-                result.append("<font id=\"social\">");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</font>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::Email:
-                result.append("<a href=\"mailto:");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("\">");
-                result.append(plainText.mid(entity.offset(), entity.length()));
-                result.append("</a>");
-            break;
-            case MessageEntityObject::MessageEntityEnum::TextUrl:
-            case MessageEntityObject::MessageEntityEnum::Url:
-                auto url = plainText.mid(entity.offset(), entity.length());
-                result.append("<a href=\"");
-                result.append(entity.url().isEmpty()? url : entity.url());
-                result.append("\">");
-                result.append(url);
-                result.append("</a>");
-            break;
-        }
-        sourcePosition = entity.offset() + entity.length();
+        linkColor.setNamedColor("#207982");
+        codeColor.setNamedColor("#997327");
     }
-    result.append(plainText.mid(sourcePosition, plainText.length()));
-    return result;
+    result->clear();
+    if(_message.length() > 0)
+    {
+        result->setPlainText(_message);
+        Q_FOREACH(const MessageEntity &entity, _entities)
+        {
+            QTextCursor cursor{result};
+            cursor.setPosition(entity.offset(), QTextCursor::MoveAnchor);
+            cursor.setPosition(entity.offset() + entity.length(), QTextCursor::KeepAnchor);
+            const QString subText = _message.mid(entity.offset(), entity.length());
+            switch(entity.classType()) {
+            case MessageEntity::MessageEntityClassType::typeMessageEntityBold:
+            {
+                QTextCharFormat format;
+                format.setFontWeight(60);
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityBotCommand:
+                break;
+            case MessageEntity::MessageEntityClassType::typeMessageEntityCode:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityPre:
+            {
+                QTextCharFormat format;
+                format.setFontFamily("Ubuntu Mono");
+                format.setFontFixedPitch(true);
+                if (codeColor.isValid()) {
+                    format.setForeground(codeColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityEmail:
+            {
+                QTextCharFormat format;
+                format.setAnchor(true);
+                format.setAnchorHref("mailto:" % subText);
+                if (linkColor.isValid()) {
+                    format.setForeground(linkColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityItalic:
+            {
+                QTextCharFormat format;
+                format.setFontItalic(true);
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityHashtag:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityMention:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityMentionName:
+            {
+                QTextCharFormat format;
+                format.setAnchor(true);
+                format.setAnchorHref(subText);
+                if (linkColor.isValid()) {
+                    format.setForeground(linkColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            case MessageEntity::MessageEntityClassType::typeMessageEntityTextUrl:
+            case MessageEntity::MessageEntityClassType::typeMessageEntityUrl:
+            {
+                QTextCharFormat format;
+                format.setAnchor(true);
+                format.setAnchorHref(entity.classType() == MessageEntity::MessageEntityClassType::typeMessageEntityTextUrl ? entity.url() : subText);
+                format.setFontUnderline(true);
+                if (linkColor.isValid()) {
+                    format.setForeground(linkColor);
+                }
+                cursor.mergeCharFormat(format);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+    result->adjustSize();
 }
 

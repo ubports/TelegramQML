@@ -119,6 +119,7 @@ class TELEGRAMQMLSHARED_EXPORT TelegramQml : public QObject
     Q_PROPERTY(QString authSignUpError READ authSignUpError NOTIFY authSignUpErrorChanged)
     Q_PROPERTY(QString authSignInError READ authSignInError NOTIFY authSignInErrorChanged)
     Q_PROPERTY(QString error           READ error           NOTIFY errorChanged          )
+    Q_PROPERTY(QString hint           READ hint           NOTIFY hintChanged          )
 
     Q_PROPERTY(DialogObject* nullDialog READ nullDialog NOTIFY fakeSignal)
     Q_PROPERTY(MessageObject* nullMessage READ nullMessage NOTIFY fakeSignal)
@@ -226,6 +227,7 @@ public:
     QString authSignUpError() const;
     QString authSignInError() const;
     QString error() const;
+    QString hint() const;
 
     Q_INVOKABLE static void setLogLevel(int level);
 
@@ -239,7 +241,7 @@ public:
     void setGlobalMute(bool stt);
     bool globalMute() const;
 
-    Q_INVOKABLE void helpGetInviteText(const QString &langCode);
+    Q_INVOKABLE void helpGetInviteText();
 
     Q_INVOKABLE DialogObject *dialog(qint64 id) const;
     Q_INVOKABLE MessageObject *message(qint64 id) const;
@@ -262,8 +264,6 @@ public:
     Q_INVOKABLE FileLocationObject *locationOfPhoto(PhotoObject *photo);
     Q_INVOKABLE FileLocationObject *locationOfThumbPhoto(PhotoObject *photo);
     Q_INVOKABLE FileLocationObject *locationOfDocument(DocumentObject *doc);
-    Q_INVOKABLE FileLocationObject *locationOfVideo(VideoObject *vid);
-    Q_INVOKABLE FileLocationObject *locationOfAudio(AudioObject *aud);
 
     Q_INVOKABLE bool documentIsSticker(DocumentObject *doc);
     Q_INVOKABLE qint64 documentStickerId(DocumentObject *doc);
@@ -309,10 +309,13 @@ public:
 
     Q_INVOKABLE void updatesGetDifference();
 
+    QMutex getDialogsLock;
+    QMutex getMessagesLock;
+    QMutex reconnectLock;
+
 public Q_SLOTS:
     void authLogout();
     void authResetAuthorizations();
-    void authSendCall();
     void authSendCode();
     void authSendInvites(const QStringList &phoneNumbers, const QString &inviteText);
     void authSignIn(const QString &code, bool retry = false);
@@ -463,6 +466,7 @@ Q_SIGNALS:
     void helpGetInviteTextAnswer(qint64 id, const HelpInviteText &message);
 
     void errorChanged();
+    void hintChanged();
     void meChanged();
     void myUserChanged();
     void fakeSignal();
@@ -489,10 +493,10 @@ private Q_SLOTS:
     void authLoggedIn_slt();
     void authLogOut_slt(qint64 id, bool ok);
     void authSendCode_slt(qint64 msgId, const AuthSentCode &result);
-    void authSendCodeError_slt(qint64 id);
-    void authSendCall_slt(qint64 id, bool ok);
+    void authSendCodeError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSendInvites_slt(qint64 id, bool ok);
     void authCheckPassword_slt(qint64 msgId, const AuthAuthorization &result);
+    void authCheckPasswordError_slt(qint64 msgId, qint32 errorCode, const QString &errorText);
     void authSignInError_slt(qint64 id, qint32 errorCode, QString errorText);
     void authSignUpError_slt(qint64 id, qint32 errorCode, QString errorText);
     void error_slt(qint64 id, qint32 errorCode, QString errorText, QString functionName);
@@ -556,20 +560,18 @@ private Q_SLOTS:
     void messagesUninstallStickerSet_slt(qint64 msgId, bool ok);
 
     void onServerError(qint64 msgId, qint32 errorCode, const QString &errorText);
-    void removeDialogsLock();
-    void removeChannelsLock();
-    void channelsGetDialogs_slt(qint64 id, const MessagesDialogs &result);
+    void removeDialogsLock(qint64 msgId, qint32 errorCode, const QString &errorText);
+    void removeReconnectLock(qint64 msgId, qint32 errorCode, const QString &errorText);
 
     void updatesTooLong_slt();
-    void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
-    void updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 chatId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, Peer fwd_from_id, qint32 fwd_date, qint32 reply_to_msg_id, bool unread, bool out);
+    void updateShortMessage_slt(qint32 id, qint32 userId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out);
+    void updateShortChatMessage_slt(qint32 id, qint32 fromId, qint32 chatId, const QString &message, qint32 pts, qint32 pts_count, qint32 date, MessageFwdHeader fwdFrom, qint32 reply_to_msg_id, bool unread, bool out);
     void updateShort_slt(const Update & update, qint32 date);
     void updatesCombined_slt(const QList<Update> & updates, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seqStart, qint32 seq);
     void updates_slt(const QList<Update> & udts, const QList<User> & users, const QList<Chat> & chats, qint32 date, qint32 seq);
     void updateSecretChatMessage_slt(const SecretChatMessage &secretChatMessage, qint32 qts);
     void updatesGetDifference_slt(qint64 id, const QList<Message> &messages, const QList<SecretChatMessage> &secretChatMessages, const QList<Update> &otherUpdates, const QList<Chat> &chats, const QList<User> &users, const UpdatesState &state, bool isIntermediateState);
     void updatesGetDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
-    void updatesGetChannelDifference_err(qint64 msgId, qint32 errorCode, const QString &errorText);
     void updatesGetState_slt(qint64 msgId, const UpdatesState &result);
     void updatesGetState_err(qint64 msgId, qint32 errorCode, const QString &errorText);
 
@@ -577,15 +579,16 @@ private Q_SLOTS:
     void uploadSendFile_slt(qint64 fileId, qint32 partId, qint32 uploaded, qint32 totalSize);
     void uploadCancelFile_slt(qint64 fileId, bool cancelled);
 
+    void getDialogs();
     void onConnectedChanged();
 
     void fatalError_slt();
 
 private:
-    void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false);
-    void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false);
-    void insertUser(const User & newUser, bool fromDb = false );
-    void insertChat( const Chat & chat, bool fromDb = false, const ChatFull &chatFull = ChatFull() );
+    void insertDialog(const Dialog & dialog , bool encrypted = false, bool fromDb = false, bool announceChanges = true);
+    void insertMessage(const Message & m , bool encrypted = false, bool fromDb = false, bool tempMsg = false, bool announceChanges = true);
+    void insertUser(const User & newUser, bool fromDb = false, bool announceChanges = true );
+    void insertChat(const Chat & chat, bool fromDb = false, const ChatFull &chatFull = ChatFull() , bool announceChanges = true);
     void insertStickerSet(const StickerSet &set, bool fromDb = false);
     void insertStickerPack(const StickerPack &pack, bool fromDb = false);
     void insertDocument(const Document &doc, bool fromDb = false);
@@ -600,7 +603,11 @@ private:
     void blockUser(qint64 userId);
     void unblockUser(qint64 userId);
 
+    void sortMessages();
+    void sortMessages(qint64 did);
+    void sortDialogs();
     void setReadFlag(qint32 dId, const qint32 maxId, const Peer &peer);
+    void updateUnreadCount(qint32 dId, const qint32 maxId, const Peer &peer);
 
     QString fileLocation_old( FileLocationObject *location );
     QString fileLocation_old2( FileLocationObject *location );
@@ -608,10 +615,6 @@ private:
     static QString localFilesPrePath();
     static bool createAudioThumbnail(const QString &audio, const QString &output);
     QString publicKeyPath() const;
-
-    QMutex getDialogsLock;
-    QMutex getMessagesLock;
-    QMutex getChannelsLock;
 
 protected:
     void timerEvent(QTimerEvent *e);
